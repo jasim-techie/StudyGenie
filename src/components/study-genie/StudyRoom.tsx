@@ -140,13 +140,19 @@ export function StudyRoom() {
               <div className="flex justify-between items-center w-full">
                 <span>{subject.name}</span>
                 <Button 
+                  asChild
                   variant="ghost" 
                   size="icon" 
-                  onClick={(e) => { e.stopPropagation(); handleRemoveSubject(subject.id); }} 
+                  onClick={(e) => { 
+                    e.stopPropagation(); // Prevent accordion toggle
+                    handleRemoveSubject(subject.id); 
+                  }} 
                   className="text-destructive hover:bg-destructive/10"
                   aria-label={`Remove subject ${subject.name}`}
                 >
-                  <Trash2 className="h-5 w-5" />
+                  <span role="button" tabIndex={0}>
+                    <Trash2 className="h-5 w-5" />
+                  </span>
                 </Button>
               </div>
             </AccordionTrigger>
