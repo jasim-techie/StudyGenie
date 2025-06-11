@@ -69,7 +69,7 @@ function StudentPageContent() {
             </div>
             <nav className="space-y-1.5">
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href={`/dashboard/student?name=${encodeURIComponent(studentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
+                <Link href={`/dashboard/student?name=\${encodeURIComponent(studentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => handleLinkClick("/", undefined)}>
                 <BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI

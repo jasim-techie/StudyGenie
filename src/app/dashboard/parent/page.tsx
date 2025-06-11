@@ -26,7 +26,7 @@ function truncateFileName(name: string, maxLength: number = 20): string {
   const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
   const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
   if (baseName.length <= maxLength - extension.length - 3) return name;
-  return \`\${baseName.substring(0, maxLength - extension.length - 3)}...\${extension}\`;
+  return `\${baseName.substring(0, maxLength - extension.length - 3)}...\${extension}`;
 }
 
 function ParentPageContent() {
@@ -53,16 +53,16 @@ function ParentPageContent() {
   
   const handleAskQuestionOnFile = (subjectName: string, fileName: string) => {
     toast({
-        title: \`Ask AI about \${fileName}\`,
-        description: \`This feature would allow you to ask questions or get summaries based on the content of "\${fileName}" for \${subjectName}. Backend integration needed.\`,
+        title: `Ask AI about \${fileName}\`,
+        description: `This feature would allow you to ask questions or get summaries based on the content of "\${fileName}" for \${subjectName}. Backend integration needed.\`,
         duration: 5000
     });
   };
   
   const handleViewDetailedReport = (subjectName: string) => {
      toast({
-        title: \`Detailed Report for \${subjectName}\`,
-        description: \`This would show a detailed report of quizzes, study time, etc. for \${subjectName}. (Feature Coming Soon)\`,
+        title: `Detailed Report for \${subjectName}\`,
+        description: `This would show a detailed report of quizzes, study time, etc. for \${subjectName}. (Feature Coming Soon)\`,
         duration: 4000
     });
   }
@@ -81,7 +81,7 @@ function ParentPageContent() {
             </div>
             <nav className="space-y-1.5">
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href={\`/dashboard/parent?name=\${encodeURIComponent(parentName)}\`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
+                <Link href={`/dashboard/parent?name=\${encodeURIComponent(parentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Coming Soon", description: "Student profile & settings will be here."})}>
                 <User className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Child's Profile
@@ -128,7 +128,7 @@ function ParentPageContent() {
                     <CardHeader className="pb-2 sm:pb-3">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg sm:text-xl font-semibold">{subject.name}</CardTitle>
-                        <Badge variant={subject.topicsCovered === subject.topicsTotal ? "default" : "secondary"} className={\`\${subject.topicsCovered === subject.topicsTotal ? 'bg-green-600 text-white' : 'bg-blue-500 text-white'} text-xs sm:text-sm shadow-sm\`}>
+                        <Badge variant={subject.topicsCovered === subject.topicsTotal ? "default" : "secondary"} className={`\${subject.topicsCovered === subject.topicsTotal ? 'bg-green-600 text-white' : 'bg-blue-500 text-white'} text-xs sm:text-sm shadow-sm`}>
                           {subject.topicsCovered === subject.topicsTotal && <CheckCircle2 className="inline mr-1.5 h-4 w-4"/>}
                           {subject.topicsCovered} / {subject.topicsTotal} Topics
                         </Badge>
@@ -142,7 +142,7 @@ function ParentPageContent() {
                     <CardContent className="text-xs sm:text-sm space-y-1.5">
                       <p className="text-muted-foreground">Last material: <em className="text-foreground">{subject.lastStudiedFile}</em></p>
                       <p className="text-muted-foreground">Quiz Attempts: <span className="font-medium text-foreground">{subject.quizAttempts}</span></p>
-                      <p className="text-muted-foreground">Average Score: <span className={\`font-medium \${subject.avgScore >= 70 ? 'text-green-600' : 'text-orange-600'}\`}>{subject.avgScore > 0 ? \`\${subject.avgScore}%\` : 'N/A'}</span></p>
+                      <p className="text-muted-foreground">Average Score: <span className={`font-medium \${subject.avgScore >= 70 ? 'text-green-600' : 'text-orange-600'}`}>{subject.avgScore > 0 ? `\${subject.avgScore}%` : 'N/A'}</span></p>
                     </CardContent>
                     <CardFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
                        <Button 
