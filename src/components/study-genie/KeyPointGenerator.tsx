@@ -13,7 +13,7 @@ import type { GenerateKeyPointsOutput } from "@/lib/types";
 import { handleGenerateKeyPoints } from "@/app/actions";
 
 const MAX_WORDS_KEY_POINTS = 5000; // Increased limit for answer content
-const MARK_WEIGHTAGES = [2, 4, 8, 12, 16];
+const MARK_WEIGHTAGES = [2, 4, 8, 12, 16, 20];
 
 export function KeyPointGenerator() {
   const [answerContent, setAnswerContent] = useState<string>("");
