@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { User, UserCog, LogIn, BrainCircuit, Eye, EyeOff } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
@@ -57,28 +56,25 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="role-group" className="text-base">I am a:</Label>
-              <RadioGroup
-                id="role-group"
-                value={role}
-                onValueChange={(value: "student" | "parent") => setRole(value)}
-                className="grid grid-cols-2 gap-3"
-              >
-                <Label
-                  htmlFor="student-role"
-                  className="flex items-center justify-center space-x-2 p-3 border rounded-md hover:bg-muted/30 cursor-pointer transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary"
+              <Label className="text-base">I am a:</Label>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <Button
+                  type="button"
+                  variant={role === "student" ? "default" : "outline"}
+                  onClick={() => setRole("student")}
+                  className="w-full py-3 text-base h-auto transition-all duration-200 ease-in-out"
                 >
-                  <RadioGroupItem value="student" id="student-role" />
-                  <User className="mr-1 h-5 w-5" /> Student
-                </Label>
-                <Label
-                  htmlFor="parent-role"
-                  className="flex items-center justify-center space-x-2 p-3 border rounded-md hover:bg-muted/30 cursor-pointer transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary"
+                  <User className="mr-2 h-5 w-5" /> Student
+                </Button>
+                <Button
+                  type="button"
+                  variant={role === "parent" ? "default" : "outline"}
+                  onClick={() => setRole("parent")}
+                  className="w-full py-3 text-base h-auto transition-all duration-200 ease-in-out"
                 >
-                  <RadioGroupItem value="parent" id="parent-role" />
-                  <UserCog className="mr-1 h-5 w-5" /> Parent
-                </Label>
-              </RadioGroup>
+                  <UserCog className="mr-2 h-5 w-5" /> Parent
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
