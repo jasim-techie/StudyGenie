@@ -9,9 +9,10 @@ import { TimeAllocationChart } from "@/components/study-genie/TimeAllocationChar
 import { ResourceSuggestions } from "@/components/study-genie/ResourceSuggestions";
 import { QuizGenerator } from "@/components/study-genie/QuizGenerator";
 import { QuizDisplay } from "@/components/study-genie/QuizDisplay";
+import { KeyPointGenerator } from "@/components/study-genie/KeyPointGenerator"; // New import
 import { PdfExportButton } from "@/components/study-genie/PdfExportButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, BookCopy, HelpCircleIcon } from "lucide-react";
+import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react"; // Added Sparkles icon
 import { useToast } from "@/hooks/use-toast";
 import { handleGenerateStudyPlan, handleCreateQuiz } from "./actions";
 import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry } from "@/lib/types";
@@ -36,16 +37,14 @@ export default function HomePage() {
         id: s.id,
         name: s.name,
         topicInputMode: s.topicInputMode,
-        topics: s.topics, // This is now always a string
-        notesImageForTopics: s.notesImageForTopics, // File object, might be null
+        topics: s.topics,
+        notesImageForTopics: s.notesImageForTopics,
         ocrTextPreview: s.ocrTextPreview
     }));
-
 
     if (data.supplementaryTopicImages && data.supplementaryTopicImages.length > 0) {
       toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan with your images..." });
     } else if (formattedSubjects.some(s => s.topics && s.topics.trim() !== "")) {
-       // Check if any subject has topics that might lead to image generation
       const willGenerateImages = formattedSubjects.some(s => s.topics && s.topics.trim() !== "") && (!data.supplementaryTopicImages || data.supplementaryTopicImages.length === 0);
       if (willGenerateImages) {
         toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and creating images for your topics. This may take a moment..." });
@@ -83,18 +82,20 @@ export default function HomePage() {
     setQuizJson(null); 
   };
 
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
         <Tabs defaultValue="study-plan" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:w-fit mx-auto mb-8">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 md:w-fit mx-auto mb-8">
             <TabsTrigger value="study-plan" className="text-base py-2.5">
               <BookCopy className="mr-2 h-5 w-5" /> Study Plan Generator
             </TabsTrigger>
             <TabsTrigger value="quiz-maker" className="text-base py-2.5">
               <HelpCircleIcon className="mr-2 h-5 w-5" /> Quiz Maker
+            </TabsTrigger>
+            <TabsTrigger value="key-points" className="text-base py-2.5">
+              <Sparkles className="mr-2 h-5 w-5" /> Key Point Extractor
             </TabsTrigger>
           </TabsList>
 
@@ -107,7 +108,7 @@ export default function HomePage() {
                   <p className="ml-0 mt-4 text-lg text-muted-foreground">
                     AI is crafting your plan
                     { (schedule === null && resources === null && 
-                       ( !schedule?.timetable || schedule.timetable.length === 0 ) && /* crude check if images might be generated */
+                       ( !schedule?.timetable || schedule.timetable.length === 0 ) && 
                        ( !resources?.resourceSuggestions || resources.resourceSuggestions.length === 0 ) )
                       ? ' and potentially generating images...' : '...'}
                   </p>
@@ -141,6 +142,12 @@ export default function HomePage() {
               ) : (
                 <QuizDisplay quizJson={quizJson} onRetakeQuiz={handleRetakeQuiz} />
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="key-points">
+            <div className="space-y-8">
+              <KeyPointGenerator />
             </div>
           </TabsContent>
         </Tabs>

@@ -66,4 +66,17 @@ export type CreatedQuizOutput = {
 };
 
 export interface TimeAllocationData {
-  subject
+  subject: string; // Added subject to TimeAllocationData
+  hours: number;
+  fill: string;
+}
+
+// Types for Key Point Generator
+export interface GenerateKeyPointsInput {
+  answerContent: string;
+  markWeightage: number;
+}
+
+export interface GenerateKeyPointsOutput {
+  keyPoints: string[];
+}
