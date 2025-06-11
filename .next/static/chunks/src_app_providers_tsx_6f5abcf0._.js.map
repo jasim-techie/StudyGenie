@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file:///D:/development/StudyGenie/src/app/providers.tsx"],"sourcesContent":["\"use client\";\nimport type { PropsWithChildren } from 'react';\nimport { ThemeProvider } from 'next-themes';\n\nexport function Providers({ children }: PropsWithChildren) {\n  return (\n    <ThemeProvider attribute=\"class\" defaultTheme=\"system\" enableSystem disableTransitionOnChange>\n      {children}\n    </ThemeProvider>\n  );\n}\n"],"names":[],"mappings":";;;;AAEA;AAFA;;;AAIO,SAAS,UAAU,EAAE,QAAQ,EAAqB;IACvD,qBACE,6LAAC,mJAAA,CAAA,gBAAa;QAAC,WAAU;QAAQ,cAAa;QAAS,YAAY;QAAC,yBAAyB;kBAC1F;;;;;;AAGP;KANgB","debugId":null}}]
-}
