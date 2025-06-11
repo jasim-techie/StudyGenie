@@ -9,13 +9,13 @@ import { TimeAllocationChart } from "@/components/study-genie/TimeAllocationChar
 import { ResourceSuggestions } from "@/components/study-genie/ResourceSuggestions";
 import { QuizGenerator } from "@/components/study-genie/QuizGenerator";
 import { QuizDisplay } from "@/components/study-genie/QuizDisplay";
-import { KeyPointGenerator } from "@/components/study-genie/KeyPointGenerator"; // New import
+import { KeyPointGenerator } from "@/components/study-genie/KeyPointGenerator";
 import { PdfExportButton } from "@/components/study-genie/PdfExportButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react"; // Added Sparkles icon
+import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleGenerateStudyPlan, handleCreateQuiz } from "./actions";
-import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry } from "@/lib/types";
+import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry as FormSubjectEntry } from "@/lib/types"; // Renamed SubjectEntry to FormSubjectEntry
 import { format } from "date-fns";
 
 export default function HomePage() {
@@ -33,24 +33,20 @@ export default function HomePage() {
     setSchedule(null);
     setResources(null);
     
-    const formattedSubjects: SubjectEntry[] = data.subjects.map(s => ({
+    // Map form data to the structure expected by handleGenerateStudyPlan
+    const formattedSubjects: FormSubjectEntry[] = data.subjects.map(s => ({
         id: s.id,
         name: s.name,
-        topicInputMode: s.topicInputMode,
-        topics: s.topics,
+        topics: s.topics, // topicInputMode removed, topics is now always the source
         notesImageForTopics: s.notesImageForTopics,
         ocrTextPreview: s.ocrTextPreview
     }));
+    
+    const hasAnyTopicText = formattedSubjects.some(s => s.topics && s.topics.trim() !== "");
+    const willGenerateImages = hasAnyTopicText; // Simpler logic: if topics exist, images might be generated
 
-    if (data.supplementaryTopicImages && data.supplementaryTopicImages.length > 0) {
-      toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan with your images..." });
-    } else if (formattedSubjects.some(s => s.topics && s.topics.trim() !== "")) {
-      const willGenerateImages = formattedSubjects.some(s => s.topics && s.topics.trim() !== "") && (!data.supplementaryTopicImages || data.supplementaryTopicImages.length === 0);
-      if (willGenerateImages) {
-        toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and creating images for your topics. This may take a moment..." });
-      } else {
-        toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan..." });
-      }
+    if (willGenerateImages) {
+      toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and may create images for your topics. This can take a moment..." });
     } else {
       toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan..." });
     }
@@ -60,7 +56,7 @@ export default function HomePage() {
       examDate: format(data.examDate, "yyyy-MM-dd"),
       startDate: format(data.startDate, "yyyy-MM-dd"),
       availableStudyHoursPerDay: data.studyHoursPerDay,
-      supplementaryTopicImages: data.supplementaryTopicImages,
+      // supplementaryTopicImages removed from here
     });
 
     if (result.error) {

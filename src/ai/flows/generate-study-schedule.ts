@@ -17,12 +17,10 @@ const GenerateStudyScheduleInputSchema = z.object({
   subjects: z
     .array(z.string())
     .describe('List of subjects to study, e.g., Mathematics, Physics, Chemistry.'),
-  // Topics can be a single string (block of text from OCR) or a list of strings (manually entered)
-  // The prompt will need to handle this. We send it as an array of one string if it's a block.
   topics: z
     .array(z.string()) 
-    .describe('A list containing either a single block of text (e.g., from OCR) or multiple comma-separated topics. The AI should identify distinct topics from this input.'),
-  topicImageInputs: z.array(z.string().url()).optional().describe('Optional array of supplementary topic images as data URIs, providing visual context for specific topics.'),
+    .describe('A list of all topics across all subjects. The AI should identify distinct study topics from this input and distribute them appropriately.'),
+  topicImageInputs: z.array(z.string().url()).optional().describe('Optional array of AI-generated or supplementary topic images as data URIs, providing visual context for specific topics.'),
   examDate: z.string().describe('The date of the exam, e.g., 2024-12-31.'),
   startDate: z.string().describe('The date to start studying, e.g., 2024-10-01.'),
   availableStudyHoursPerDay: z
@@ -37,10 +35,10 @@ const GenerateStudyScheduleOutputSchema = z.object({
       date: z.string().describe('The date for this study session, e.g., 2024-10-01.'),
       topics: z
         .array(z.string())
-        .describe('List of topics to study on this date, e.g., [Algebra, Functions].'),
+        .describe('List of topics to study on this date, e.g., [Algebra, Functions]. These topics should be drawn from the overall list provided in the input.'),
     }))
     .describe('A list of study sessions, each containing a date and a list of topics to study on that date.'),
-  summary: z.string().describe('A summary of the study plan, including time allocation per subject.'),
+  summary: z.string().describe('A summary of the study plan, including time allocation per subject. e.g., "Mathematics: 40%, Physics: 30%, Chemistry: 30%" or "Mathematics: 20 hours, Physics: 15 hours, Chemistry: 15 hours"'),
 });
 export type GenerateStudyScheduleOutput = z.infer<typeof GenerateStudyScheduleOutputSchema>;
 
@@ -56,25 +54,28 @@ const prompt = ai.definePrompt({
 
 Subjects: {{#each subjects}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 
-Topics input: 
+Topics to cover (these are from all subjects combined, distribute them logically): 
 {{#each topics}}
-{{{this}}}
+- {{{this}}}
 {{/each}}
-(If the topics input above is a large block of text, please identify distinct study topics from it. If it's already a list, use them as is.)
 
 {{#if topicImageInputs}}
-Visual context for specific topics:
+Here are some visual aids or symbolic images related to the topics. Use them for inspiration or context if helpful, but do not attempt to display them directly in the JSON output.
 {{#each topicImageInputs}}
 {{media url=this}}
 {{/each}}
 {{/if}}
+
 Exam Date: {{examDate}}
 Start Date: {{startDate}}
 Available Study Hours Per Day: {{availableStudyHoursPerDay}}
 
-Analyze the subjects and the provided topics (whether as a list or a block of text needing topic extraction).
-Create a timetable that splits the identified topics across the days, taking into account the available time and perceived difficulty of the topics.
-Provide the timetable in JSON format, making sure to include the date and topics for each session. Also, provide a summary of the study plan, including time allocation per subject.
+Analyze the subjects and the provided list of topics.
+Create a daily timetable that splits these topics across the available days, starting from the 'Start Date' and leading up to the 'Exam Date'.
+Consider the number of subjects and the total topics to allocate them reasonably within the 'Available Study Hours Per Day'.
+For the 'summary', provide an estimated breakdown of time allocation per subject, either in percentages (e.g., "Mathematics: 40%, Physics: 30%") or in estimated total hours per subject (e.g., "Biology: 25 hours, History: 15 hours").
+
+Provide the timetable and summary strictly in the specified JSON format. Ensure each entry in the 'timetable' array has a 'date' and a 'topics' array. The 'topics' array should contain strings of the topics scheduled for that day.
 `,
 });
 
@@ -86,7 +87,17 @@ const generateStudyScheduleFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+        throw new Error("Failed to generate study schedule. The AI model did not return the expected output.");
+    }
+    // Ensure the output structure is what we expect, especially the summary.
+    // The schema validation handles the structure, but let's be explicit about summary format expectation.
+    if (output.summary && !output.summary.includes(":") && !output.summary.toLowerCase().includes("no summary")) {
+      // If summary is just a generic sentence and not a breakdown.
+      console.warn("The AI's summary might not be a structured allocation. Consider re-prompting or providing a default if needed.");
+      // Potentially, we could try to infer a basic summary if the AI fails to provide a good one.
+      // For now, we'll pass it through.
+    }
+    return output;
   }
 );
-

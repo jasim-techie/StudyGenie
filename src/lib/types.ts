@@ -2,9 +2,9 @@
 export interface SubjectEntry {
   id: string; // Unique ID for React key prop
   name: string;
-  topicInputMode: "manual" | "image";
+  // topicInputMode: "manual" | "image"; // Removed: Replaced by direct textarea and OCR button
   topics: string; // Stores manually entered topics or OCR results
-  notesImageForTopics?: File | null; // Stores the File object for image upload
+  notesImageForTopics?: File | null; // Stores the File object for image upload for OCR
   ocrTextPreview?: string | null; // For displaying OCR result or status
 }
 
@@ -13,7 +13,7 @@ export interface StudyPlanFormValues {
   examDate: Date;
   startDate: Date;
   studyHoursPerDay: number;
-  supplementaryTopicImages?: FileList | null; // For overall plan, not per-subject topic images
+  // supplementaryTopicImages?: FileList | null; // Removed
 }
 
 export interface TimetableEntry {

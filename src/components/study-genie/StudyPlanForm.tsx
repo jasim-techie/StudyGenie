@@ -17,23 +17,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageUp, FileText, ImageIcon, Loader2, PlusCircle, XCircle, Trash2 } from "lucide-react";
+// import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // No longer needed for topic input mode
+import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageUp, FileText, ImageIcon, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { StudyPlanFormValues, SubjectEntry } from "@/lib/types";
-import { type ChangeEvent, useState, useEffect } from "react";
+import { type ChangeEvent, useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { handleImageUploadForTopicExtraction } from "@/app/actions";
 
 const subjectEntrySchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Subject name is required."),
-  topicInputMode: z.enum(["manual", "image"]).default("manual"),
+  // topicInputMode: z.enum(["manual", "image"]).default("manual"), // Removed
   topics: z.string(), // Will be populated by manual input or OCR
-  notesImageForTopics: z.any().nullable().optional(), // Store File object
+  notesImageForTopics: z.any().nullable().optional(), // Store File object for OCR
   ocrTextPreview: z.string().nullable().optional(),
 });
 
@@ -42,24 +42,25 @@ const formSchema = z.object({
   examDate: z.date({ required_error: "Exam date is required." }),
   startDate: z.date({ required_error: "Start date is required." }),
   studyHoursPerDay: z.coerce.number().min(0.5, "Minimum 0.5 hours").max(12, "Maximum 12 hours"),
-  supplementaryTopicImages: z.any().optional(),
+  // supplementaryTopicImages: z.any().optional(), // Removed
 });
 
 type FormSchemaType = z.infer<typeof formSchema>;
 
 interface StudyPlanFormProps {
-  onSubmit: (data: StudyPlanFormValues) => Promise<void>; // Make onSubmit async
+  onSubmit: (data: StudyPlanFormValues) => Promise<void>;
   isLoading: boolean;
 }
 
 export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
   const [ocrLoadingStates, setOcrLoadingStates] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      subjects: [{ id: crypto.randomUUID(), name: "", topicInputMode: "manual", topics: "", notesImageForTopics: null, ocrTextPreview: null }],
+      subjects: [{ id: crypto.randomUUID(), name: "", topics: "", notesImageForTopics: null, ocrTextPreview: null }],
       studyHoursPerDay: 3,
       startDate: new Date(),
       examDate: new Date(new Date().setDate(new Date().getDate() + 30)),
@@ -83,7 +84,7 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
       }
       setOcrLoadingStates(prev => ({ ...prev, [subjectId]: true }));
       form.setValue(`subjects.${subjectIndex}.ocrTextPreview`, "Extracting text from image...");
-      form.setValue(`subjects.${subjectIndex}.topics`, ""); // Clear manual topics
+      // form.setValue(`subjects.${subjectIndex}.topics`, ""); // Keep existing manual topics until OCR completes
 
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -94,9 +95,11 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
           toast({ title: "OCR Error", description: result.error, variant: "destructive" });
           form.setValue(`subjects.${subjectIndex}.ocrTextPreview`, `Error: ${result.error}`);
         } else if (result.extractedText !== null) {
-          form.setValue(`subjects.${subjectIndex}.topics`, result.extractedText);
+          const currentTopics = form.getValues(`subjects.${subjectIndex}.topics`);
+          const newTopics = currentTopics ? `${currentTopics}\n${result.extractedText}` : result.extractedText;
+          form.setValue(`subjects.${subjectIndex}.topics`, newTopics);
           form.setValue(`subjects.${subjectIndex}.ocrTextPreview`, result.extractedText || "No text extracted.");
-          toast({ title: "Text Extracted", description: `Text for subject "${form.getValues(`subjects.${subjectIndex}.name`)}" populated.` });
+          toast({ title: "Text Extracted & Appended", description: `Text for subject "${form.getValues(`subjects.${subjectIndex}.name`)}" populated.` });
         }
       };
       reader.readAsDataURL(file);
@@ -104,8 +107,11 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     }
   };
 
+  const triggerImageUpload = (subjectId: string) => {
+    fileInputRefs.current[subjectId]?.click();
+  };
+
   async function handleSubmit(values: FormSchemaType) {
-    // Validate that topics are provided for each subject based on its input mode
     for (let i = 0; i < values.subjects.length; i++) {
       const subject = values.subjects[i];
       if (!subject.topics || subject.topics.trim() === "") {
@@ -114,7 +120,7 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
           description: `Please enter topics or upload an image for topic extraction for ${subject.name || `Subject ${i + 1}`}.`,
           variant: "destructive"
         });
-        return; // Stop submission
+        return; 
       }
     }
     await onSubmit(values);
@@ -156,136 +162,67 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                     </FormItem>
                   )}
                 />
-
-                <Controller
+                
+                <FormField
                   control={form.control}
-                  name={`subjects.${index}.topicInputMode`}
-                  render={({ field: modeField }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel className="text-base">Topic Input Method</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={(value) => {
-                            modeField.onChange(value);
-                            form.setValue(`subjects.${index}.topics`, "");
-                            form.setValue(`subjects.${index}.ocrTextPreview`, null);
-                            form.setValue(`subjects.${index}.notesImageForTopics`, null);
-                          }}
-                          value={modeField.value}
-                          className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4"
+                  name={`subjects.${index}.topics`}
+                  render={({ field: topicsField }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="flex items-center text-base"><ListChecks className="mr-2 h-5 w-5 text-primary" />Topics</FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => triggerImageUpload(subjectId)}
+                          disabled={currentOcrLoading}
+                          className="ml-2"
                         >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="manual" />
-                            </FormControl>
-                            <FormLabel className="font-normal flex items-center text-base">
-                              <FileText className="mr-2 h-5 w-5 text-primary" /> Manual Entry
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="image" />
-                            </FormControl>
-                            <FormLabel className="font-normal flex items-center text-base">
-                              <ImageIcon className="mr-2 h-5 w-5 text-primary" /> Upload Notes Image (OCR)
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
+                          {currentOcrLoading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <ImageIcon className="mr-2 h-4 w-4" />
+                          )}
+                          Upload Notes Image (OCR)
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <Textarea placeholder="Enter topics manually, separated by commas or new lines. Or, upload an image to extract topics via OCR." {...topicsField} rows={5} className="text-base mt-2"/>
                       </FormControl>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={(el) => fileInputRefs.current[subjectId] = el}
+                        onChange={(e) => handleNotesImageChangeForSubject(index, e)}
+                      />
+                      <FormDescription>Enter topics directly or use the button to upload an image of your notes to extract text.</FormDescription>
+                      {currentOcrLoading && (
+                        <div className="flex items-center space-x-2 mt-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span>Extracting text...</span>
+                        </div>
+                      )}
+                      {form.watch(`subjects.${index}.ocrTextPreview`) && !currentOcrLoading && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm font-medium text-foreground">Last OCR Extraction Preview:</p>
+                          <Textarea readOnly value={form.watch(`subjects.${index}.ocrTextPreview`) || ""} rows={3} className="bg-muted/50 border-border/50 text-sm"/>
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {form.watch(`subjects.${index}.topicInputMode`) === "manual" && (
-                  <FormField
-                    control={form.control}
-                    name={`subjects.${index}.topics`}
-                    render={({ field: topicsField }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center text-base"><ListChecks className="mr-2 h-5 w-5 text-primary" />Topics (Manual)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Enter topics, separated by commas or line-by-line." {...topicsField} rows={4} className="text-base"/>
-                        </FormControl>
-                        <FormDescription>Enter topics for this subject.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {form.watch(`subjects.${index}.topicInputMode`) === "image" && (
-                  <FormField
-                    control={form.control}
-                    name={`subjects.${index}.notesImageForTopics`}
-                    render={({ field: { onChange: onFileChangeHandler, value, ...restField } }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center text-base"><ImageUp className="mr-2 h-5 w-5 text-primary" />Upload Notes Image for Topics</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleNotesImageChangeForSubject(index, e)}
-                            {...restField}
-                            className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
-                          />
-                        </FormControl>
-                        <FormDescription>Upload an image of your notes for this subject. Text will be extracted to populate topics.</FormDescription>
-                        {currentOcrLoading && (
-                          <div className="flex items-center space-x-2 mt-2 text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            <span>Extracting text...</span>
-                          </div>
-                        )}
-                        {form.watch(`subjects.${index}.ocrTextPreview`) && !currentOcrLoading && (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-sm font-medium text-foreground">Extracted Text Preview:</p>
-                            <Textarea readOnly value={form.watch(`subjects.${index}.ocrTextPreview`) || ""} rows={5} className="bg-muted/50 border-border/50 text-sm"/>
-                          </div>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                 {/* Hidden field to store topics from OCR, always read by handleSubmit */}
-                {form.watch(`subjects.${index}.topicInputMode`) === 'image' && (
-                    <Controller
-                        control={form.control}
-                        name={`subjects.${index}.topics`}
-                        render={({ field }) => <Input type="hidden" {...field} />}
-                    />
-                )}
               </CardContent>
             </Card>
           );
         })}
 
-        <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), name: "", topicInputMode: "manual", topics: "", notesImageForTopics: null, ocrTextPreview: null })} className="w-full md:w-auto flex items-center gap-2 group hover:border-primary hover:text-primary transition-colors">
+        <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), name: "", topics: "", notesImageForTopics: null, ocrTextPreview: null })} className="w-full md:w-auto flex items-center gap-2 group hover:border-primary hover:text-primary transition-colors">
           <PlusCircle className="h-5 w-5 group-hover:text-primary transition-colors" /> Add Another Subject
         </Button>
         
-        <FormField
-          control={form.control}
-          name="supplementaryTopicImages"
-          render={({ field: { onChange, value, ...restField } }) => (
-            <FormItem>
-              <FormLabel className="flex items-center text-base"><ImageUp className="mr-2 h-5 w-5 text-primary" />General Supplementary Topic Images (Optional)</FormLabel>
-              <FormControl>
-                <Input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.files)}
-                  {...restField}
-                  className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
-                />
-              </FormControl>
-              <FormDescription>Upload additional images for the overall plan, if any. These are different from notes uploaded for OCR per subject.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Removed General Supplementary Topic Images Field */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <FormField
