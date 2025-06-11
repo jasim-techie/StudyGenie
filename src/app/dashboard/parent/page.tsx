@@ -5,6 +5,7 @@ import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress"; // Import Progress component
+import { Badge } from "@/components/ui/badge"; // Import Badge component
 import { BarChart3, BookCopy, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2, Brain, Search } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -226,3 +227,4 @@ function truncateFileName(name: string, maxLength: number = 20): string {
 // Make sure your actual Progress component can accept and use `indicatorClassName`.
 // For now, the color is directly applied in the style prop based on completion.
 // A better approach is to use CSS variables or variants if supported by your Progress component.
+
