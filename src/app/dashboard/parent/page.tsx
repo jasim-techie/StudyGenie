@@ -1,16 +1,15 @@
 "use client";
 
 import { Header } from "@/components/study-genie/Header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { BarChart3, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2, Brain, Search } from "lucide-react";
-import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { BarChart3, Brain, CheckCircle2, Home, LogOut, MessageCircleQuestion, Search, Settings, User, Users } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-
+import { Suspense, useEffect, useState } from "react";
 
 const mockStudentName = "Your Child"; 
 
@@ -21,7 +20,15 @@ const mockSubjectsProgress = [
   { id: "4", name: "Biology", topicsCovered: 2, topicsTotal: 15, lastStudiedFile: "Cell Structure.pdf", quizAttempts: 0, avgScore: 0 },
 ];
 
-export default function ParentDashboardPage() {
+export default function ParentDashboardPageWrapper() {
+  return (
+    <Suspense fallback={<div className="text-center p-8">Loading Parent Dashboard...</div>}>
+      <ParentDashboardPage />
+    </Suspense>
+  );
+}
+
+function ParentDashboardPage() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,9 +46,7 @@ export default function ParentDashboardPage() {
     } else if (nameFromQuery) { 
         setStudentName(`${decodeURIComponent(nameFromQuery)}'s Child`);
     }
-
   }, [searchParams]);
-
 
   const handleLogout = () => {
     toast({
@@ -81,7 +86,9 @@ export default function ParentDashboardPage() {
             </div>
             <nav className="space-y-1.5">
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href={`/dashboard/parent?name=${encodeURIComponent(parentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
+                <Link href={`/dashboard/parent?name=${encodeURIComponent(parentName)}`}>
+                  <Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard
+                </Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Coming Soon", description: "Student profile & settings will be here."})}>
                 <User className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Child's Profile
