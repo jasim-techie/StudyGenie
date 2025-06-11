@@ -8,11 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BookOpen, FileQuestion, HelpCircleIcon, Home, LayoutDashboard, LogOut, Settings, Sparkles, User, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 
-// Mock data - in a real app, this would come from user state/backend
-const studentName = "Alex Student"; 
 const quickLinks = [
   { name: "New Study Plan", href: "/", icon: BookOpen, description: "Generate a personalized study schedule." },
   { name: "Quiz Maker", href: "/#quiz-maker", icon: HelpCircleIcon, description: "Test your knowledge from notes.", sectionId: "quiz-maker" },
@@ -22,9 +21,17 @@ const quickLinks = [
 export default function StudentDashboardPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [studentName, setStudentName] = useState("Student");
+
+  useEffect(() => {
+    const nameFromQuery = searchParams.get("name");
+    if (nameFromQuery) {
+      setStudentName(nameFromQuery);
+    }
+  }, [searchParams]);
 
   const handleLogout = () => {
-    // Placeholder for actual logout logic
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out. (Simulation)",
@@ -34,8 +41,8 @@ export default function StudentDashboardPage() {
 
   const handleLinkClick = (href: string, sectionId?: string) => {
     if (sectionId && href === "/") {
-        router.push('/'); // Go to home page first
-        setTimeout(() => { // Allow time for navigation
+        router.push('/'); 
+        setTimeout(() => { 
             const section = document.getElementById(sectionId);
             if (section) {
                 section.scrollIntoView({ behavior: 'smooth' });
@@ -51,7 +58,6 @@ export default function StudentDashboardPage() {
       <Header />
       
       <div className="flex flex-1">
-        {/* Sidebar Placeholder - For larger screens */}
         <aside className="w-60 lg:w-64 bg-card p-4 lg:p-6 space-y-6 border-r hidden md:flex flex-col justify-between shadow-sm">
           <div>
             <div className="text-center mb-8">
@@ -84,7 +90,6 @@ export default function StudentDashboardPage() {
           </div>
         </aside>
 
-        {/* Main Content Area */}
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline text-foreground">
@@ -95,12 +100,11 @@ export default function StudentDashboardPage() {
             </p>
           </div>
 
-          {/* Quick Links Section */}
           <section className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {quickLinks.map(link => (
-                <Card key={link.name} className="hover:shadow-lg transition-shadow duration-200 ease-in-out border-border/70">
+                <Card key={link.name} className="hover:shadow-lg transition-shadow duration-200 ease-in-out border-border/70 bg-card/80 backdrop-blur-sm">
                     <CardHeader className="pb-3">
                     <link.icon className="h-7 w-7 sm:h-8 sm:w-8 text-accent mb-1.5" />
                     <CardTitle className="text-lg sm:text-xl">{link.name}</CardTitle>
@@ -125,7 +129,6 @@ export default function StudentDashboardPage() {
             </div>
           </section>
           
-          {/* Study Room Section */}
           <StudyRoom />
 
         </main>

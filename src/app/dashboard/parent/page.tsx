@@ -4,17 +4,16 @@
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress"; // Import Progress component
-import { Badge } from "@/components/ui/badge"; // Import Badge component
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { BarChart3, BookCopy, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2, Brain, Search } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 
-// Mock data - in a real app, this would come from user state/backend
-const parentName = "Ms. Guardian";
-const studentName = "Alex Student"; // Assuming parent is linked to one student for this placeholder
+const mockStudentName = "Your Child"; 
 
 const mockSubjectsProgress = [
   { id: "1", name: "Mathematics", topicsCovered: 8, topicsTotal: 12, lastStudiedFile: "Chapter 3 Notes.pdf", quizAttempts: 3, avgScore: 75 },
@@ -26,9 +25,20 @@ const mockSubjectsProgress = [
 export default function ParentDashboardPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [parentName, setParentName] = useState("Guardian");
+  const [studentName, setStudentName] = useState(mockStudentName); // Student's name can also be dynamic if linked
+
+  useEffect(() => {
+    const nameFromQuery = searchParams.get("name");
+    if (nameFromQuery) {
+      setParentName(nameFromQuery);
+    }
+    // In a real app, student's name would be fetched based on parent's account linkage
+  }, [searchParams]);
+
 
   const handleLogout = () => {
-    // Placeholder for actual logout logic
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out. (Simulation)",
@@ -57,21 +67,19 @@ export default function ParentDashboardPage() {
       <Header />
       
       <div className="flex flex-1">
-        {/* Sidebar Placeholder */}
         <aside className="w-60 lg:w-64 bg-card p-4 lg:p-6 space-y-6 border-r hidden md:flex flex-col justify-between shadow-sm">
           <div>
             <div className="text-center mb-8">
-              <Users className="h-16 w-16 mx-auto text-primary mb-2 rounded-full bg-primary/10 p-3 border-2 border-primary/20" />
+              <Users className="h-16 w-16 mx-auto text-red-600 mb-2 rounded-full bg-red-600/10 p-3 border-2 border-red-600/20" />
               <h2 className="text-lg lg:text-xl font-semibold">{parentName}</h2>
               <p className="text-xs lg:text-sm text-muted-foreground">Parent Portal</p>
             </div>
             <nav className="space-y-1.5">
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/dashboard/parent"><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
+                <Link href={`/dashboard/parent?name=${encodeURIComponent(parentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
-              {/* Add more navigation links as needed */}
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Coming Soon", description: "Student profile & settings will be here."})}>
-                <User className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Student Profile
+                <User className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Child's Profile
               </Button>
             </nav>
           </div>
@@ -85,7 +93,6 @@ export default function ParentDashboardPage() {
           </div>
         </aside>
 
-        {/* Main Content Area */}
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline text-foreground">
@@ -96,8 +103,7 @@ export default function ParentDashboardPage() {
             </p>
           </div>
 
-          {/* Subjects Progress Section */}
-          <Card className="shadow-xl border-border/80 mb-6 sm:mb-8">
+          <Card className="shadow-xl border-border/80 mb-6 sm:mb-8 bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="font-headline text-xl sm:text-2xl lg:text-3xl flex items-center">
                 <BarChart3 className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-primary" />
@@ -117,7 +123,7 @@ export default function ParentDashboardPage() {
                     <CardHeader className="pb-2 sm:pb-3">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg sm:text-xl font-semibold">{subject.name}</CardTitle>
-                        <Badge variant={subject.topicsCovered === subject.topicsTotal ? "default" : "secondary"} className={`${subject.topicsCovered === subject.topicsTotal ? 'bg-green-500/80 text-white' : 'bg-blue-500/80 text-white'} text-xs sm:text-sm`}>
+                        <Badge variant={subject.topicsCovered === subject.topicsTotal ? "default" : "secondary"} className={`${subject.topicsCovered === subject.topicsTotal ? 'bg-green-600 text-white' : 'bg-blue-500 text-white'} text-xs sm:text-sm shadow-sm`}>
                           {subject.topicsCovered === subject.topicsTotal && <CheckCircle2 className="inline mr-1.5 h-4 w-4"/>}
                           {subject.topicsCovered} / {subject.topicsTotal} Topics
                         </Badge>
@@ -146,7 +152,7 @@ export default function ParentDashboardPage() {
                           variant="ghost" 
                           size="sm"
                           onClick={() => handleViewDetailedReport(subject.name)}
-                          className="w-full sm:w-auto text-primary"
+                          className="w-full sm:w-auto text-primary hover:text-primary/80"
                         >
                          <Search className="mr-1.5 h-4 w-4" /> View Report
                        </Button>
@@ -161,7 +167,7 @@ export default function ParentDashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="shadow-lg border-border/80">
+          <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
             <CardHeader>
                 <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
                     <Brain className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-accent" />
@@ -172,19 +178,19 @@ export default function ParentDashboardPage() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm sm:text-base">
-                <div className="p-4 bg-muted/30 rounded-lg">
+                <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
                     <h4 className="font-semibold mb-1">Custom Quiz Generation</h4>
                     <p className="text-muted-foreground text-xs sm:text-sm">Create quizzes on specific weak areas identified from reports.</p>
                 </div>
-                 <div className="p-4 bg-muted/30 rounded-lg">
+                 <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
                     <h4 className="font-semibold mb-1">Study Habit Insights</h4>
                     <p className="text-muted-foreground text-xs sm:text-sm">AI-driven suggestions based on study patterns.</p>
                 </div>
-                 <div className="p-4 bg-muted/30 rounded-lg">
+                 <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
                     <h4 className="font-semibold mb-1">Learning Resource Curation</h4>
                     <p className="text-muted-foreground text-xs sm:text-sm">Suggest supplementary materials for challenging topics.</p>
                 </div>
-                 <div className="p-4 bg-muted/30 rounded-lg">
+                 <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
                     <h4 className="font-semibold mb-1">Goal Setting & Tracking</h4>
                     <p className="text-muted-foreground text-xs sm:text-sm">Collaborate with {studentName} to set and monitor academic goals.</p>
                 </div>
@@ -200,31 +206,10 @@ export default function ParentDashboardPage() {
   );
 }
 
-// Helper function to truncate file names
 function truncateFileName(name: string, maxLength: number = 20): string {
   if (name.length <= maxLength) return name;
   const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
   const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
-  if (baseName.length <= maxLength - extension.length - 3) return name; // If basename is short enough with extension
+  if (baseName.length <= maxLength - extension.length - 3) return name;
   return `${baseName.substring(0, maxLength - extension.length - 3)}...${extension}`;
 }
-
-// Add this to your shadcn/ui Progress component if it doesn't already support indicatorClassName
-// This is a conceptual addition, actual implementation depends on your Progress component structure.
-// You might need to modify `components/ui/progress.tsx` to accept `indicatorClassName`
-// and apply it to the ProgressPrimitive.Indicator.
-// Example modification in `components/ui/progress.tsx`:
-// const Progress = React.forwardRef<..., { indicatorClassName?: string }>(
-//   ({ className, value, indicatorClassName, ...props }, ref) => (
-//     ...
-//     <ProgressPrimitive.Indicator
-//       className={cn("h-full w-full flex-1 bg-primary transition-all", indicatorClassName)}
-//       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-//     />
-//     ...
-//   )
-// );
-// Make sure your actual Progress component can accept and use `indicatorClassName`.
-// For now, the color is directly applied in the style prop based on completion.
-// A better approach is to use CSS variables or variants if supported by your Progress component.
-
