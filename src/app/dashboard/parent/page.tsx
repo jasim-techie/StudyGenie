@@ -1,17 +1,16 @@
 
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, BookCopy, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2, Brain, Search } from "lucide-react";
+import { BarChart3, BookCopy, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2, Brain, Search, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-
 
 const mockStudentName = "Your Child"; 
 
@@ -22,21 +21,27 @@ const mockSubjectsProgress = [
   { id: "4", name: "Biology", topicsCovered: 2, topicsTotal: 15, lastStudiedFile: "Cell Structure.pdf", quizAttempts: 0, avgScore: 0 },
 ];
 
-export default function ParentDashboardPage() {
+function truncateFileName(name: string, maxLength: number = 20): string {
+  if (name.length <= maxLength) return name;
+  const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
+  const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
+  if (baseName.length <= maxLength - extension.length - 3) return name;
+  return `${baseName.substring(0, maxLength - extension.length - 3)}...${extension}`;
+}
+
+function ParentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [parentName, setParentName] = useState("Guardian");
-  const [studentName, setStudentName] = useState(mockStudentName); // Student's name can also be dynamic if linked
+  const [studentName, setStudentName] = useState(mockStudentName);
 
   useEffect(() => {
     const nameFromQuery = searchParams.get("name");
     if (nameFromQuery) {
       setParentName(nameFromQuery);
     }
-    // In a real app, student's name would be fetched based on parent's account linkage
   }, [searchParams]);
-
 
   const handleLogout = () => {
     toast({
@@ -206,10 +211,15 @@ export default function ParentDashboardPage() {
   );
 }
 
-function truncateFileName(name: string, maxLength: number = 20): string {
-  if (name.length <= maxLength) return name;
-  const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
-  const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
-  if (baseName.length <= maxLength - extension.length - 3) return name;
-  return `${baseName.substring(0, maxLength - extension.length - 3)}...${extension}`;
+export default function ParentDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg font-medium text-foreground">Loading Dashboard...</p>
+      </div>
+    }>
+      <ParentPageContent />
+    </Suspense>
+  );
 }

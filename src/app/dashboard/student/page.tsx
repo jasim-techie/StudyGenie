@@ -1,15 +1,15 @@
 
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/study-genie/Header";
 import { StudyRoom } from "@/components/study-genie/StudyRoom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, FileQuestion, HelpCircleIcon, Home, LayoutDashboard, LogOut, Settings, Sparkles, User, BrainCircuit } from "lucide-react";
+import { BookOpen, FileQuestion, HelpCircleIcon, Home, LayoutDashboard, LogOut, Settings, Sparkles, User, BrainCircuit, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 
 
 const quickLinks = [
@@ -18,7 +18,7 @@ const quickLinks = [
   { name: "Key Point Extractor", href: "/#key-points", icon: Sparkles, description: "Extract key points from answers.", sectionId: "key-points" },
 ];
 
-export default function StudentDashboardPage() {
+function StudentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,13 +41,15 @@ export default function StudentDashboardPage() {
 
   const handleLinkClick = (href: string, sectionId?: string) => {
     if (sectionId && href === "/") {
-        router.push('/'); 
-        setTimeout(() => { 
+        // Special handling for navigating to sections on the homepage
+        // Ensure the main page component is loaded first, then scroll
+        router.push('/'); // Navigate to homepage
+        setTimeout(() => { // Delay scrolling to allow page to potentially re-render/load
             const section = document.getElementById(sectionId);
             if (section) {
                 section.scrollIntoView({ behavior: 'smooth' });
             }
-        }, 100);
+        }, 100); // Adjust delay as needed
     } else {
         router.push(href);
     }
@@ -67,7 +69,7 @@ export default function StudentDashboardPage() {
             </div>
             <nav className="space-y-1.5">
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/dashboard/student"><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
+                <Link href={`/dashboard/student?name=${encodeURIComponent(studentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => handleLinkClick("/", undefined)}>
                 <BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI
@@ -137,5 +139,18 @@ export default function StudentDashboardPage() {
         <p>&copy; {new Date().getFullYear()} StudyGenie AI. Student Dashboard.</p>
       </footer>
     </div>
+  );
+}
+
+export default function StudentDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg font-medium text-foreground">Loading Dashboard...</p>
+      </div>
+    }>
+      <StudentPageContent />
+    </Suspense>
   );
 }
