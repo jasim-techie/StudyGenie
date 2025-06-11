@@ -179,7 +179,7 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                           ) : (
                             <ImageIcon className="mr-2 h-4 w-4" />
                           )}
-                          Upload Notes Image
+                          Upload Topic Image
                         </Button>
                       </div>
                       <FormControl>
@@ -324,3 +324,5 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     </Form>
   );
 }
+
+    
