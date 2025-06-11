@@ -237,9 +237,7 @@ function ParentDashboardPage() {
                           </CardTitle>
                           <Badge
                             variant={
-                              subject.topicsCovered === subject.topicsTotal
-                                ? "default"
-                                : "secondary"
+                              subject.topicsCovered === subject.topicsTotal ? "default" : "secondary"
                             }
                             className={`${
                               subject.topicsCovered === subject.topicsTotal
@@ -265,14 +263,11 @@ function ParentDashboardPage() {
                       </CardHeader>
                       <CardContent className="text-xs sm:text-sm space-y-1.5">
                         <p className="text-muted-foreground">
-                          Last material:{" "}
-                          <em className="text-foreground">{subject.lastStudiedFile}</em>
+                          Last material: <em className="text-foreground">{subject.lastStudiedFile}</em>
                         </p>
                         <p className="text-muted-foreground">
                           Quiz Attempts:{" "}
-                          <span className="font-medium text-foreground">
-                            {subject.quizAttempts}
-                          </span>
+                          <span className="font-medium text-foreground">{subject.quizAttempts}</span>
                         </p>
                         <p className="text-muted-foreground">
                           Average Score:{" "}
