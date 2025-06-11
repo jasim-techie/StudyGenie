@@ -1,9 +1,11 @@
+
 // src/app/actions.ts
 "use server";
 
 import { generateStudySchedule, GenerateStudyScheduleInput } from "@/ai/flows/generate-study-schedule";
 import { suggestLearningResources, SuggestLearningResourcesInput } from "@/ai/flows/suggest-learning-resources";
 import { createQuizFromNotes, CreateQuizFromNotesInput } from "@/ai/flows/create-quiz-from-notes";
+import { generateTopicImage } from "@/ai/flows/generate-topic-image-flow"; // New import
 import type { GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, CreatedQuizOutput } from "@/lib/types";
 
 // Helper to convert File to Data URI
@@ -15,17 +17,39 @@ async function fileToDataUri(file: File): Promise<string> {
 
 export async function handleGenerateStudyPlan(
   data: Omit<GenerateStudyScheduleInput, 'topicImageInputs' | 'subjects' | 'topics'> & {
-    subjects: string[]; // Expecting string array from page.tsx
-    topics: string[];   // Expecting string array from page.tsx
+    subjects: string[];
+    topics: string[];
     topicsForResources: string[];
-    topicImages?: FileList; // Receive FileList from form
+    topicImages?: FileList;
   }
 ): Promise<{ schedule: GeneratedStudyScheduleOutput | null; resources: SuggestedLearningResourcesOutput | null; error?: string }> {
   try {
-    let topicImageInputs: string[] | undefined = undefined;
+    let topicImageInputsForSchedule: string[] | undefined = undefined;
+
     if (data.topicImages && data.topicImages.length > 0) {
+      // User uploaded images, use them
       const imagePromises = Array.from(data.topicImages).map(file => fileToDataUri(file));
-      topicImageInputs = await Promise.all(imagePromises);
+      topicImageInputsForSchedule = await Promise.all(imagePromises);
+    } else if (data.topics && data.topics.length > 0) {
+      // No images uploaded by user, try to generate them for each topic
+      // Note: Toast notifications should be handled client-side before calling this action.
+      console.log("Attempting to generate topic images as none were uploaded.");
+      const generatedImagePromises = data.topics.map(async (topic) => {
+        try {
+          const result = await generateTopicImage({ topicText: topic });
+          return result.imageDataUri;
+        } catch (genError) {
+          console.warn(`Failed to generate image for topic "${topic}":`, genError instanceof Error ? genError.message : String(genError));
+          return null; // Return null if image generation fails for a topic
+        }
+      });
+      const generatedImages = (await Promise.all(generatedImagePromises)).filter(img => img !== null) as string[];
+      if (generatedImages.length > 0) {
+        topicImageInputsForSchedule = generatedImages;
+        console.log(`Successfully generated ${generatedImages.length} topic images.`);
+      } else {
+        console.log("No topic images were generated or all generations failed.");
+      }
     }
 
     const scheduleInput: GenerateStudyScheduleInput = {
@@ -34,7 +58,7 @@ export async function handleGenerateStudyPlan(
       examDate: data.examDate,
       startDate: data.startDate,
       availableStudyHoursPerDay: data.availableStudyHoursPerDay,
-      topicImageInputs: topicImageInputs,
+      topicImageInputs: topicImageInputsForSchedule,
     };
     const schedule = await generateStudySchedule(scheduleInput);
 

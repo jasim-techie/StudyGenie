@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -30,10 +31,17 @@ export default function HomePage() {
     setStudyPlanLoading(true);
     setSchedule(null);
     setResources(null);
-    toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan..." });
-
+    
     const subjectsArray = data.subjects.split(',').map(s => s.trim()).filter(s => s);
     const topicsArray = data.topics.split(',').map(t => t.trim()).filter(t => t);
+
+    if (data.topicImages && data.topicImages.length > 0) {
+      toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan with your images..." });
+    } else if (topicsArray.length > 0) {
+      toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and creating images for your topics. This may take a moment..." });
+    } else {
+      toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan..." });
+    }
     
     const result = await handleGenerateStudyPlan({
       subjects: subjectsArray,
@@ -42,7 +50,7 @@ export default function HomePage() {
       startDate: format(data.startDate, "yyyy-MM-dd"),
       availableStudyHoursPerDay: data.studyHoursPerDay,
       topicsForResources: topicsArray, 
-      topicImages: data.topicImages, // Pass FileList to action
+      topicImages: data.topicImages,
     });
 
     if (result.error) {
@@ -85,7 +93,7 @@ export default function HomePage() {
               {studyPlanLoading && (
                 <div className="flex justify-center items-center py-8">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="ml-4 text-lg text-muted-foreground">AI is crafting your plan...</p>
+                  <p className="ml-4 text-lg text-muted-foreground">AI is crafting your plan{(!schedule && (!resources && (!data.topicImages || data.topicImages.length === 0))) ? ' and images' : ''}...</p>
                 </div>
               )}
               {schedule && (
@@ -110,8 +118,6 @@ export default function HomePage() {
                   setIsLoading={setQuizLoading}
                   createQuizAction={async (notesDataUri: string): Promise<{ quizData: CreatedQuizOutput | null; error?: string }> => {
                      const result = await handleCreateQuiz(notesDataUri);
-                     // Explicitly cast to the expected return type if necessary,
-                     // but here the types should align if handleCreateQuiz is correct.
                      return result as { quizData: CreatedQuizOutput | null; error?: string };
                   }}
                 />

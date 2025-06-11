@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +31,7 @@ const formSchema = z.object({
   examDate: z.date({ required_error: "Exam date is required." }),
   startDate: z.date({ required_error: "Start date is required." }),
   studyHoursPerDay: z.coerce.number().min(0.5, "Minimum 0.5 hours").max(12, "Maximum 12 hours"),
-  topicImages: z.instanceof(FileList).optional(),
+  topicImages: z.any().optional(), // Changed from z.instanceof(FileList)
 });
 
 type FormSchemaType = z.infer<typeof formSchema>;
