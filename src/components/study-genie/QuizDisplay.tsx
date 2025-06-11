@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle, XCircle, HelpCircle, Trophy, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface QuizDisplayProps {
   quizJson: string;
@@ -25,12 +27,11 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
   useEffect(() => {
     try {
       const parsedQuiz: Quiz = JSON.parse(quizJson);
-      // Add unique IDs to questions if they don't have them
       const quizWithIds = {
         ...parsedQuiz,
         questions: parsedQuiz.questions.map((q, index) => ({
           ...q,
-          id: q.id || `q-${index}`
+          id: q.id || \`q-\${index}\`
         }))
       };
       setQuiz(quizWithIds);
@@ -40,7 +41,7 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
       setScore(0);
     } catch (error) {
       console.error("Failed to parse quiz JSON:", error);
-      setQuiz(null); 
+      setQuiz(null);
     }
   }, [quizJson]);
 
@@ -83,10 +84,10 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
   }
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
+  const progress = quiz.questions.length > 0 ? ((currentQuestionIndex + 1) / quiz.questions.length) * 100 : 0;
 
   if (showResults) {
-    const percentage = (score / quiz.questions.length) * 100;
+    const percentage = quiz.questions.length > 0 ? (score / quiz.questions.length) * 100 : 0;
     return (
       <Card className="shadow-lg w-full max-w-2xl mx-auto">
         <CardHeader>
@@ -97,14 +98,23 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
           <CardDescription>You scored {score} out of {quiz.questions.length} ({percentage.toFixed(1)}%)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {quiz.questions.map((q, index) => (
-            <div key={q.id} className={`p-4 rounded-md border ${userAnswers[q.id] === q.correctAnswer ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'}`}>
-              <p className="font-medium">{index + 1}. {q.questionText}</p>
-              <p className="text-sm mt-1">Your answer: <span className={userAnswers[q.id] === q.correctAnswer ? 'text-green-700' : 'text-red-700'}>{userAnswers[q.id] || "Not answered"}</span></p>
-              <p className="text-sm">Correct answer: <span className="text-green-700">{q.correctAnswer}</span></p>
-              {q.explanation && <p className="text-xs mt-1 text-muted-foreground">Explanation: {q.explanation}</p>}
-            </div>
-          ))}
+          {quiz.questions.map((q, index) => {
+            const isCorrect = userAnswers[q.id] === q.correctAnswer;
+            const cardClasses = cn(
+              "p-4 rounded-md border",
+              isCorrect ? "border-green-500 bg-green-500/10" : "border-red-500 bg-red-500/10"
+            );
+            const answerClasses = cn(isCorrect ? 'text-green-700' : 'text-red-700');
+
+            return (
+              <div key={q.id} className={cardClasses}>
+                <p className="font-medium">{index + 1}. {q.questionText}</p>
+                <p className="text-sm mt-1">Your answer: <span className={answerClasses}>{userAnswers[q.id] || "Not answered"}</span></p>
+                <p className="text-sm">Correct answer: <span className="text-green-700">{q.correctAnswer}</span></p>
+                {q.explanation && <p className="text-xs mt-1 text-muted-foreground">Explanation: {q.explanation}</p>}
+              </div>
+            );
+          })}
         </CardContent>
         <CardFooter>
           <Button onClick={onRetakeQuiz} variant="outline" className="w-full">
@@ -137,10 +147,10 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
             {currentQuestion.options.map((option, index) => (
               <Label
                 key={index}
-                htmlFor={`${currentQuestion.id}-option-${index}`}
+                htmlFor={\`\${currentQuestion.id}-option-\${index}\`}
                 className="flex items-center space-x-3 p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary"
               >
-                <RadioGroupItem value={option} id={`${currentQuestion.id}-option-${index}`} />
+                <RadioGroupItem value={option} id={\`\${currentQuestion.id}-option-\${index}\`} />
                 <span>{option}</span>
               </Label>
             ))}
