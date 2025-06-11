@@ -1,23 +1,22 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
 import { Header } from "@/components/study-genie/Header";
-import { StudyPlanForm } from "@/components/study-genie/StudyPlanForm";
-import { TimetableDisplay } from "@/components/study-genie/TimetableDisplay";
-import { TimeAllocationChart } from "@/components/study-genie/TimeAllocationChart";
-import { ResourceSuggestions } from "@/components/study-genie/ResourceSuggestions";
-import { QuizGenerator } from "@/components/study-genie/QuizGenerator";
-import { QuizDisplay } from "@/components/study-genie/QuizDisplay";
 import { KeyPointGenerator } from "@/components/study-genie/KeyPointGenerator";
 import { PdfExportButton } from "@/components/study-genie/PdfExportButton";
+import { QuizDisplay } from "@/components/study-genie/QuizDisplay";
+import { QuizGenerator } from "@/components/study-genie/QuizGenerator";
+import { ResourceSuggestions } from "@/components/study-genie/ResourceSuggestions";
+import { StudyPlanForm } from "@/components/study-genie/StudyPlanForm";
+import { TimeAllocationChart } from "@/components/study-genie/TimeAllocationChart";
+import { TimetableDisplay } from "@/components/study-genie/TimetableDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { handleGenerateStudyPlan, handleCreateQuiz } from "./actions";
-import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry as FormSubjectEntry } from "@/lib/types";
+import type { CreatedQuizOutput, SubjectEntry as FormSubjectEntry, GeneratedStudyScheduleOutput, StudyPlanFormValues, SuggestedLearningResourcesOutput, TimetableEntry } from "@/lib/types";
 import { format } from "date-fns";
-import { useSearchParams, useRouter } from 'next/navigation';
-
+import { BookCopy, HelpCircleIcon, Loader2, Sparkles } from "lucide-react";
+import { Suspense, useState } from "react"; // Added Suspense
+import { handleCreateQuiz, handleGenerateStudyPlan } from "./actions";
 
 export default function HomePage() {
   const [studyPlanLoading, setStudyPlanLoading] = useState(false);
@@ -26,27 +25,8 @@ export default function HomePage() {
   const [schedule, setSchedule] = useState<GeneratedStudyScheduleOutput | null>(null);
   const [resources, setResources] = useState<SuggestedLearningResourcesOutput | null>(null);
   const [quizJson, setQuizJson] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("study-plan");
 
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  useEffect(() => {
-    const section = searchParams.get('section');
-    if (section === 'quiz-maker' || section === 'key-points') {
-      setActiveTab(section);
-      // Clean the URL by removing the section query param after scrolling
-      const current = new URL(window.location.toString());
-      current.searchParams.delete('section');
-      router.replace(current.pathname + current.search, { scroll: false });
-
-      // Scroll to the element if needed
-      const element = document.getElementById(section);
-      element?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [searchParams, router]);
-
 
   const onStudyPlanSubmit = async (data: StudyPlanFormValues) => {
     setStudyPlanLoading(true);
@@ -62,7 +42,7 @@ export default function HomePage() {
     }));
     
     const hasAnyTopicText = formattedSubjects.some(s => s.topics && s.topics.trim() !== "");
-    const willGenerateImages = hasAnyTopicText; 
+    const willGenerateImages = hasAnyTopicText;
 
     if (willGenerateImages) {
       toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and may create images for your topics. This can take a moment..." });
@@ -98,9 +78,19 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <Suspense fallback={<div className="h-[68px] sm:h-[76px] w-full bg-card/95 border-b shadow-sm"> {/* Placeholder for header height */}
+        <div className="container mx-auto flex items-center justify-between h-full">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 bg-muted rounded-full animate-pulse"></div>
+            <div className="h-6 w-32 bg-muted rounded animate-pulse"></div>
+          </div>
+          <div className="h-8 w-24 bg-muted rounded animate-pulse"></div>
+        </div>
+      </div>}>
+        <Header />
+      </Suspense>
       <main className="flex-grow container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs defaultValue="study-plan" className="w-full">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 md:w-fit mx-auto mb-8">
             <TabsTrigger value="study-plan" className="text-base py-2.5">
               <BookCopy className="mr-2 h-5 w-5" /> Study Plan Generator
@@ -120,7 +110,11 @@ export default function HomePage() {
                 <div className="flex flex-col justify-center items-center py-8 text-center">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
                   <p className="ml-0 mt-4 text-lg text-muted-foreground">
-                    AI is crafting your plan...
+                    AI is crafting your plan
+                    { (schedule === null && resources === null && 
+                       ( !schedule?.timetable || schedule.timetable.length === 0 ) && 
+                       ( !resources?.resourceSuggestions || resources.resourceSuggestions.length === 0 ) )
+                      ? ' and potentially generating images...' : '...'}
                   </p>
                 </div>
               )}
@@ -164,7 +158,7 @@ export default function HomePage() {
       </main>
       <footer className="py-6 text-center text-muted-foreground border-t">
         <p>&copy; {new Date().getFullYear()} StudyGenie AI. All rights reserved.</p>
-        <p className="text-xs mt-1">Powered by Ai & Next.js</p>
+        <p className="text-xs mt-1">Powered by Genkit & Next.js</p>
       </footer>
     </div>
   );
