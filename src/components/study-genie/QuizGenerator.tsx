@@ -1,122 +1,133 @@
+
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UploadCloud, FileQuestion } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileQuestion, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import type { CreatedQuizOutput } from "@/lib/types";
 
 interface QuizGeneratorProps {
   onQuizGenerated: (quizJson: string) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  createQuizAction: (notesDataUri: string) => Promise<{ quizData: { quiz: string } | null; error?: string }>;
+  createQuizAction: (notesText: string, numQuestions?: number) => Promise<{ quizData: CreatedQuizOutput | null; error?: string }>;
 }
 
+const MAX_WORDS = 3000;
+
 export function QuizGenerator({ onQuizGenerated, isLoading, setIsLoading, createQuizAction }: QuizGeneratorProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState<string>("");
+  const [wordCount, setWordCount] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.type === "application/pdf") {
-        setFile(selectedFile);
-        setFileError(null);
-      } else {
-        setFile(null);
-        setFileError("Please upload a PDF file.");
-        toast({ title: "Invalid File Type", description: "Only PDF files are accepted for quiz generation.", variant: "destructive" });
-      }
+  useEffect(() => {
+    const words = notesText.split(/\s+/).filter(Boolean);
+    setWordCount(words.length);
+    if (words.length > MAX_WORDS) {
+      setError(`Word limit exceeded. Maximum ${MAX_WORDS} words allowed.`);
+    } else {
+      setError(null);
     }
+  }, [notesText]);
+
+  const handleTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setNotesText(event.target.value);
   };
 
   const handleSubmit = async () => {
-    if (!file) {
-      setFileError("Please select a PDF file to upload.");
+    if (!notesText.trim()) {
+      setError("Please paste your study notes.");
+      toast({ title: "Empty Notes", description: "Please paste some text to generate a quiz.", variant: "destructive" });
+      return;
+    }
+    if (wordCount > MAX_WORDS) {
+      setError(`Word limit exceeded. Maximum ${MAX_WORDS} words allowed.`);
+      toast({ title: "Word Limit Exceeded", description: `Please reduce your notes to ${MAX_WORDS} words or less.`, variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
-    setFileError(null);
+    setError(null);
+    
+    // For now, let's default to 5 questions. This could be a user input later.
+    const numQuestions = 5; 
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const dataUri = e.target?.result as string;
-      if (dataUri) {
-        try {
-          const result = await createQuizAction(dataUri);
-          if (result.error) {
-            throw new Error(result.error);
-          }
-          if (result.quizData?.quiz) {
-            onQuizGenerated(result.quizData.quiz);
-            toast({ title: "Quiz Generated!", description: "Your quiz is ready to be taken." });
-          } else {
-            throw new Error("Quiz data not found in response.");
-          }
-        } catch (error) {
-          console.error("Error generating quiz:", error);
-          const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-          toast({ title: "Quiz Generation Failed", description: errorMessage, variant: "destructive" });
-          setFileError(`Failed to generate quiz: ${errorMessage}`);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        setFileError("Could not read file data.");
-        toast({ title: "File Read Error", description: "Could not read file data.", variant: "destructive" });
-        setIsLoading(false);
+    try {
+      const result = await createQuizAction(notesText, numQuestions);
+      if (result.error) {
+        throw new Error(result.error);
       }
-    };
-    reader.onerror = () => {
-      setFileError("Error reading file.");
-      toast({ title: "File Read Error", description: "Error reading file.", variant: "destructive" });
+      if (result.quizData?.quiz) {
+        onQuizGenerated(result.quizData.quiz);
+        toast({ title: "Quiz Generated!", description: "Your quiz is ready to be taken." });
+      } else {
+        throw new Error("Quiz data not found in response.");
+      }
+    } catch (err) {
+      console.error("Error generating quiz:", err);
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+      toast({ title: "Quiz Generation Failed", description: errorMessage, variant: "destructive" });
+      setError(`Failed to generate quiz: ${errorMessage}`);
+    } finally {
       setIsLoading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="font-headline text-2xl flex items-center">
           <FileQuestion className="mr-2 h-6 w-6 text-primary" />
-          Study Notes Quiz Maker
+          Paste Your Study Notes
         </CardTitle>
         <CardDescription>
-          Upload your study notes (PDF) and we&apos;ll generate a quiz for you!
+          Enter your notes, textbook content, or copied material below (max {MAX_WORDS} words). 
+          Our AI will generate a quiz to help you review.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="notes-upload" className="text-base font-medium">Upload PDF Notes</Label>
-          <div className="mt-2 flex items-center space-x-3">
-            <Input
-              id="notes-upload"
-              type="file"
-              accept=".pdf"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-            />
-            <Button onClick={handleSubmit} disabled={!file || isLoading} size="icon" aria-label="Generate Quiz">
-              <UploadCloud className="h-5 w-5" />
-            </Button>
+          <Label htmlFor="notes-input" className="text-base font-medium">Your Study Notes</Label>
+          <Textarea
+            id="notes-input"
+            value={notesText}
+            onChange={handleTextChange}
+            placeholder="Paste your notes here..."
+            rows={15}
+            className="mt-2 text-base min-h-[200px] resize-y"
+          />
+          <div className="mt-2 flex justify-between items-center text-sm">
+            <p className={wordCount > MAX_WORDS ? "text-destructive" : "text-muted-foreground"}>
+              Word Count: {wordCount} / {MAX_WORDS}
+            </p>
+            {error && <p className="text-destructive">{error}</p>}
           </div>
-          {file && <p className="mt-2 text-sm text-muted-foreground">Selected file: {file.name}</p>}
-          {fileError && <p className="mt-2 text-sm text-destructive">{fileError}</p>}
         </div>
-        
-        {isLoading && (
-          <div className="flex items-center justify-center space-x-2">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-            <p className="text-sm text-muted-foreground">Generating quiz, please wait...</p>
-          </div>
-        )}
       </CardContent>
+      <CardFooter>
+        <Button 
+          onClick={handleSubmit} 
+          disabled={isLoading || wordCount === 0 || wordCount > MAX_WORDS} 
+          className="w-full text-base py-3"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Generating Quiz...
+            </>
+          ) : (
+            <>
+              <Send className="mr-2 h-5 w-5" />
+              Generate Quiz ({wordCount > 0 && wordCount <= MAX_WORDS ? '5 Questions' : '...'})
+            </>
+          )}
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

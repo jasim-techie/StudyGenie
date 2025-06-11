@@ -41,7 +41,15 @@ export async function handleGenerateStudyPlan(
 ): Promise<{ schedule: GeneratedStudyScheduleOutput | null; resources: SuggestedLearningResourcesOutput | null; error?: string }> {
   try {
     const subjectNames = data.subjects.map(s => s.name);
-    const allTopics = data.subjects.map(s => s.topics).filter(t => t && t.trim() !== "");
+    // Consolidate all topics from all subjects. Each s.topics is expected to be a string of comma/newline separated topics.
+    // Or it could be a block of text from OCR. The AI will need to parse distinct topics.
+    const allTopicTexts: string[] = data.subjects.reduce((acc, s) => {
+        if (s.topics && s.topics.trim() !== "") {
+            acc.push(s.topics.trim());
+        }
+        return acc;
+    }, [] as string[]);
+
 
     let supplementaryTopicImageDataUris: string[] | undefined = undefined;
     if (data.supplementaryTopicImages && data.supplementaryTopicImages.length > 0) {
@@ -52,9 +60,10 @@ export async function handleGenerateStudyPlan(
     let topicImagesForSchedule: string[] = supplementaryTopicImageDataUris || [];
 
     // Generate images for topics if no supplementary images are provided AND topics exist
-    if (!supplementaryTopicImageDataUris || supplementaryTopicImageDataUris.length === 0) {
-        const generatedTopicImagePromises = allTopics.filter(topicBlock => topicBlock && topicBlock.trim() !== "").map(async (topicBlock) => {
-            // Consider taking the first few words or a summary of the topicBlock for image generation if it's too long
+    if ((!supplementaryTopicImageDataUris || supplementaryTopicImageDataUris.length === 0) && allTopicTexts.length > 0) {
+        // For image generation, we might want to pick representative keywords from topic texts.
+        // Here, we'll take the first few words of each topic block if it's long.
+        const generatedTopicImagePromises = allTopicTexts.map(async (topicBlock) => {
             const imageGenInputText = topicBlock.length > 100 ? topicBlock.substring(0, 100) + "..." : topicBlock;
              if (imageGenInputText) {
                 const imageResult = await generateTopicImage({ topicText: imageGenInputText });
@@ -69,7 +78,7 @@ export async function handleGenerateStudyPlan(
 
     const scheduleInput: GenerateStudyScheduleInput = {
       subjects: subjectNames,
-      topics: allTopics.length > 0 ? allTopics : ["General Studies"],
+      topics: allTopicTexts.length > 0 ? allTopicTexts : ["General Studies"], // Send combined topic texts or a default
       examDate: data.examDate,
       startDate: data.startDate,
       availableStudyHoursPerDay: data.availableStudyHoursPerDay,
@@ -77,9 +86,10 @@ export async function handleGenerateStudyPlan(
     };
     const schedule = await generateStudySchedule(scheduleInput);
 
+    // For resources, also use the combined topic texts.
     const resourcesInput: SuggestLearningResourcesInput = {
       subject: subjectNames.join(', ') || "General Studies", 
-      topics: allTopics.length > 0 ? allTopics : ["general knowledge"],
+      topics: allTopicTexts.length > 0 ? allTopicTexts : ["general knowledge"],
     };
     const resources = await suggestLearningResources(resourcesInput);
     
@@ -91,14 +101,28 @@ export async function handleGenerateStudyPlan(
 }
 
 export async function handleCreateQuiz(
-  notesDataUri: string
+  notesText: string,
+  numQuestions: number = 5 // Default to 5 questions, can be made configurable
 ): Promise<{ quizData: CreatedQuizOutput | null; error?: string }> {
   try {
-    const quizInput: CreateQuizFromNotesInput = { notesDataUri };
+    if (!notesText || notesText.trim() === "") {
+        return { quizData: null, error: "Notes text cannot be empty." };
+    }
+    // Potentially add a server-side length check here too, though client-side word count is primary.
+    
+    const quizInput: CreateQuizFromNotesInput = { notesText, numQuestions };
     const quizData = await createQuizFromNotes(quizInput);
     return { quizData };
   } catch (error) {
     console.error("Error creating quiz:", error);
-    return { quizData: null, error: error instanceof Error ? error.message : "Failed to create quiz." };
+    const errorMessage = error instanceof Error ? error.message : "Failed to create quiz due to an unexpected error.";
+    // More specific error check for rate limits, if possible by inspecting `error`
+    if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+      return { quizData: null, error: "Quiz generation failed due to API rate limits. Please try again later or with shorter notes." };
+    }
+    if (errorMessage.toLowerCase().includes("token count exceeds")) {
+      return { quizData: null, error: "Your notes are too long for the AI to process. Please shorten them and try again." };
+    }
+    return { quizData: null, error: errorMessage };
   }
 }

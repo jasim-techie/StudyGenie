@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, BookCopy, HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleGenerateStudyPlan, handleCreateQuiz } from "./actions";
-import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput } from "@/lib/types";
+import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry } from "@/lib/types";
 import { format } from "date-fns";
 
 export default function HomePage() {
@@ -32,25 +32,36 @@ export default function HomePage() {
     setSchedule(null);
     setResources(null);
     
-    const subjectsArray = data.subjects.split(',').map(s => s.trim()).filter(s => s);
-    const topicsArray = data.topics.split(',').map(t => t.trim()).filter(t => t);
+    const formattedSubjects: SubjectEntry[] = data.subjects.map(s => ({
+        id: s.id,
+        name: s.name,
+        topicInputMode: s.topicInputMode,
+        topics: s.topics, // This is now always a string
+        notesImageForTopics: s.notesImageForTopics, // File object, might be null
+        ocrTextPreview: s.ocrTextPreview
+    }));
 
-    if (data.topicImages && data.topicImages.length > 0) {
+
+    if (data.supplementaryTopicImages && data.supplementaryTopicImages.length > 0) {
       toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan with your images..." });
-    } else if (topicsArray.length > 0) {
-      toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and creating images for your topics. This may take a moment..." });
+    } else if (formattedSubjects.some(s => s.topics && s.topics.trim() !== "")) {
+       // Check if any subject has topics that might lead to image generation
+      const willGenerateImages = formattedSubjects.some(s => s.topics && s.topics.trim() !== "") && (!data.supplementaryTopicImages || data.supplementaryTopicImages.length === 0);
+      if (willGenerateImages) {
+        toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and creating images for your topics. This may take a moment..." });
+      } else {
+        toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan..." });
+      }
     } else {
       toast({ title: "Generating Study Plan", description: "AI is crafting your personalized plan..." });
     }
     
     const result = await handleGenerateStudyPlan({
-      subjects: subjectsArray,
-      topics: topicsArray,
+      subjects: formattedSubjects,
       examDate: format(data.examDate, "yyyy-MM-dd"),
       startDate: format(data.startDate, "yyyy-MM-dd"),
       availableStudyHoursPerDay: data.studyHoursPerDay,
-      topicsForResources: topicsArray, 
-      topicImages: data.topicImages,
+      supplementaryTopicImages: data.supplementaryTopicImages,
     });
 
     if (result.error) {
@@ -78,7 +89,7 @@ export default function HomePage() {
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
         <Tabs defaultValue="study-plan" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:w-1/2 mx-auto mb-8">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:w-fit mx-auto mb-8">
             <TabsTrigger value="study-plan" className="text-base py-2.5">
               <BookCopy className="mr-2 h-5 w-5" /> Study Plan Generator
             </TabsTrigger>
@@ -91,16 +102,22 @@ export default function HomePage() {
             <div className="space-y-8">
               <StudyPlanForm onSubmit={onStudyPlanSubmit} isLoading={studyPlanLoading} />
               {studyPlanLoading && (
-                <div className="flex justify-center items-center py-8">
+                <div className="flex flex-col justify-center items-center py-8 text-center">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="ml-4 text-lg text-muted-foreground">AI is crafting your plan{(!schedule && (!resources && (!data.topicImages || data.topicImages.length === 0))) ? ' and images' : ''}...</p>
+                  <p className="ml-0 mt-4 text-lg text-muted-foreground">
+                    AI is crafting your plan
+                    { (schedule === null && resources === null && 
+                       ( !schedule?.timetable || schedule.timetable.length === 0 ) && /* crude check if images might be generated */
+                       ( !resources?.resourceSuggestions || resources.resourceSuggestions.length === 0 ) )
+                      ? ' and potentially generating images...' : '...'}
+                  </p>
                 </div>
               )}
               {schedule && (
                 <div className="mt-8 space-y-8">
                   <TimetableDisplay timetable={schedule.timetable.map(t => ({...t, topics: t.topics || []})) as TimetableEntry[]} />
-                  <TimeAllocationChart summary={schedule.summary} />
-                  {resources && <ResourceSuggestions resources={resources.resourceSuggestions} />}
+                  {schedule.summary && schedule.summary.trim() !== "" && <TimeAllocationChart summary={schedule.summary} />}
+                  {resources && resources.resourceSuggestions && resources.resourceSuggestions.length > 0 && <ResourceSuggestions resources={resources.resourceSuggestions} />}
                   <div className="text-center mt-6">
                     <PdfExportButton disabled={!schedule} />
                   </div>
@@ -116,8 +133,8 @@ export default function HomePage() {
                   onQuizGenerated={onQuizGenerated} 
                   isLoading={quizLoading}
                   setIsLoading={setQuizLoading}
-                  createQuizAction={async (notesDataUri: string): Promise<{ quizData: CreatedQuizOutput | null; error?: string }> => {
-                     const result = await handleCreateQuiz(notesDataUri);
+                  createQuizAction={async (notesText: string, numQuestions?: number): Promise<{ quizData: CreatedQuizOutput | null; error?: string }> => {
+                     const result = await handleCreateQuiz(notesText, numQuestions);
                      return result as { quizData: CreatedQuizOutput | null; error?: string };
                   }}
                 />
