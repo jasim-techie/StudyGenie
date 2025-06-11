@@ -1,10 +1,19 @@
+
+export interface SubjectEntry {
+  id: string; // Unique ID for React key prop
+  name: string;
+  topicInputMode: "manual" | "image";
+  topics: string; // Stores manually entered topics or OCR results
+  notesImageForTopics?: File | null; // Stores the File object for image upload
+  ocrTextPreview?: string | null; // For displaying OCR result or status
+}
+
 export interface StudyPlanFormValues {
-  subjects: string;
-  topics: string;
+  subjects: SubjectEntry[];
   examDate: Date;
   startDate: Date;
   studyHoursPerDay: number;
-  topicImages?: FileList; // For topic image uploads
+  supplementaryTopicImages?: FileList | null; // For overall plan, not per-subject topic images
 }
 
 export interface TimetableEntry {
@@ -28,7 +37,7 @@ export interface QuizQuestion {
   id: string;
   questionText: string;
   options: string[];
-  correctAnswer: string; // This could be the text of the correct option or an index
+  correctAnswer: string;
   explanation?: string;
   userAnswer?: string;
 }
@@ -38,7 +47,6 @@ export interface Quiz {
   questions: QuizQuestion[];
 }
 
-// Type for the output of generateStudySchedule AI flow
 export type GeneratedTimetableEntry = {
   date: string;
   topics: string[];
@@ -46,21 +54,16 @@ export type GeneratedTimetableEntry = {
 
 export type GeneratedStudyScheduleOutput = {
   timetable: GeneratedTimetableEntry[];
-  summary: string; // e.g., "Mathematics: 40%, Physics: 30%, History: 30%"
+  summary: string;
 };
 
-// Type for the output of suggestLearningResources AI flow
 export type SuggestedLearningResourcesOutput = {
   resourceSuggestions: string[];
 };
 
-// Type for the output of createQuizFromNotes AI flow
 export type CreatedQuizOutput = {
-  quiz: string; // JSON string representing the quiz
+  quiz: string; 
 };
 
 export interface TimeAllocationData {
-  subject: string;
-  hours: number;
-  fill: string;
-}
+  subject
