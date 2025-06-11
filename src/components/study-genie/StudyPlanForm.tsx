@@ -17,8 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-// import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // No longer needed for topic input mode
-import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageUp, FileText, ImageIcon, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageIcon, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -31,9 +30,8 @@ import { handleImageUploadForTopicExtraction } from "@/app/actions";
 const subjectEntrySchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Subject name is required."),
-  // topicInputMode: z.enum(["manual", "image"]).default("manual"), // Removed
-  topics: z.string(), // Will be populated by manual input or OCR
-  notesImageForTopics: z.any().nullable().optional(), // Store File object for OCR
+  topics: z.string(), 
+  notesImageForTopics: z.any().nullable().optional(), 
   ocrTextPreview: z.string().nullable().optional(),
 });
 
@@ -42,7 +40,6 @@ const formSchema = z.object({
   examDate: z.date({ required_error: "Exam date is required." }),
   startDate: z.date({ required_error: "Start date is required." }),
   studyHoursPerDay: z.coerce.number().min(0.5, "Minimum 0.5 hours").max(12, "Maximum 12 hours"),
-  // supplementaryTopicImages: z.any().optional(), // Removed
 });
 
 type FormSchemaType = z.infer<typeof formSchema>;
@@ -84,7 +81,6 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
       }
       setOcrLoadingStates(prev => ({ ...prev, [subjectId]: true }));
       form.setValue(`subjects.${subjectIndex}.ocrTextPreview`, "Extracting text from image...");
-      // form.setValue(`subjects.${subjectIndex}.topics`, ""); // Keep existing manual topics until OCR completes
 
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -183,11 +179,11 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                           ) : (
                             <ImageIcon className="mr-2 h-4 w-4" />
                           )}
-                          Upload Notes Image (OCR)
+                          Upload Notes Image
                         </Button>
                       </div>
                       <FormControl>
-                        <Textarea placeholder="Enter topics manually, separated by commas or new lines. Or, upload an image to extract topics via OCR." {...topicsField} rows={5} className="text-base mt-2"/>
+                        <Textarea placeholder="Enter topics manually, separated by commas or new lines. Or, upload an image to extract topics." {...topicsField} rows={5} className="text-base mt-2"/>
                       </FormControl>
                       <Input
                         type="file"
@@ -222,8 +218,6 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
           <PlusCircle className="h-5 w-5 group-hover:text-primary transition-colors" /> Add Another Subject
         </Button>
         
-        {/* Removed General Supplementary Topic Images Field */}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <FormField
             control={form.control}
