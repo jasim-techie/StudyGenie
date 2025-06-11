@@ -4,7 +4,8 @@
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, BookCopy, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress"; // Import Progress component
+import { BarChart3, BookCopy, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2, Brain, Search } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -15,9 +16,10 @@ const parentName = "Ms. Guardian";
 const studentName = "Alex Student"; // Assuming parent is linked to one student for this placeholder
 
 const mockSubjectsProgress = [
-  { id: "1", name: "Mathematics", topicsCovered: 8, topicsTotal: 12, lastStudiedFile: "Chapter 3 Notes.pdf" },
-  { id: "2", name: "Physics", topicsCovered: 5, topicsTotal: 10, lastStudiedFile: "Newton's Laws.ppt" },
-  { id: "3", name: "Chemistry", topicsCovered: 10, topicsTotal: 10, lastStudiedFile: "Periodic Table.docx" },
+  { id: "1", name: "Mathematics", topicsCovered: 8, topicsTotal: 12, lastStudiedFile: "Chapter 3 Notes.pdf", quizAttempts: 3, avgScore: 75 },
+  { id: "2", name: "Physics", topicsCovered: 5, topicsTotal: 10, lastStudiedFile: "Newton's Laws.ppt", quizAttempts: 1, avgScore: 90 },
+  { id: "3", name: "Chemistry", topicsCovered: 10, topicsTotal: 10, lastStudiedFile: "Periodic Table.docx", quizAttempts: 5, avgScore: 82 },
+  { id: "4", name: "Biology", topicsCovered: 2, topicsTotal: 15, lastStudiedFile: "Cell Structure.pdf", quizAttempts: 0, avgScore: 0 },
 ];
 
 export default function ParentDashboardPage() {
@@ -33,126 +35,194 @@ export default function ParentDashboardPage() {
     router.push('/login');
   };
   
-  const handleAskQuestion = (subjectName: string, fileName: string) => {
+  const handleAskQuestionOnFile = (subjectName: string, fileName: string) => {
     toast({
         title: `Ask AI about ${fileName}`,
-        description: `This feature would allow you to ask questions based on the content of "${fileName}" for ${subjectName}. Backend integration needed.`,
+        description: `This feature would allow you to ask questions or get summaries based on the content of "${fileName}" for ${subjectName}. Backend integration needed.`,
         duration: 5000
     });
   };
+  
+  const handleViewDetailedReport = (subjectName: string) => {
+     toast({
+        title: `Detailed Report for ${subjectName}`,
+        description: `This would show a detailed report of quizzes, study time, etc. for ${subjectName}. (Feature Coming Soon)`,
+        duration: 4000
+    });
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/30">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
       <Header />
       
       <div className="flex flex-1">
         {/* Sidebar Placeholder */}
-        <aside className="w-64 bg-card p-6 space-y-6 border-r hidden md:flex flex-col justify-between">
+        <aside className="w-60 lg:w-64 bg-card p-4 lg:p-6 space-y-6 border-r hidden md:flex flex-col justify-between shadow-sm">
           <div>
             <div className="text-center mb-8">
-              <Users className="h-16 w-16 mx-auto text-primary mb-2 rounded-full bg-primary/10 p-2" />
-              <h2 className="text-xl font-semibold">{parentName}</h2>
-              <p className="text-sm text-muted-foreground">Parent Portal</p>
+              <Users className="h-16 w-16 mx-auto text-primary mb-2 rounded-full bg-primary/10 p-3 border-2 border-primary/20" />
+              <h2 className="text-lg lg:text-xl font-semibold">{parentName}</h2>
+              <p className="text-xs lg:text-sm text-muted-foreground">Parent Portal</p>
             </div>
-            <nav className="space-y-2">
-              <Button variant="ghost" className="w-full justify-start text-base py-3" asChild>
-                <Link href="/dashboard/parent"><Home className="mr-2 h-5 w-5" /> Dashboard Home</Link>
+            <nav className="space-y-1.5">
+              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+                <Link href="/dashboard/parent"><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
               {/* Add more navigation links as needed */}
+              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Coming Soon", description: "Student profile & settings will be here."})}>
+                <User className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Student Profile
+              </Button>
             </nav>
           </div>
           <div className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start text-base py-3">
-              <Settings className="mr-2 h-5 w-5" /> Settings (Placeholder)
+            <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Feature Coming Soon", description: "Account settings will be available here."})}>
+              <Settings className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Settings
             </Button>
-            <Button variant="outline" className="w-full justify-start text-base py-3" onClick={handleLogout}>
-              <LogOut className="mr-2 h-5 w-5" /> Logout
+            <Button variant="outline" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Logout
             </Button>
           </div>
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold font-headline text-foreground">
+        <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline text-foreground">
               {studentName}'s Progress Overview
             </h1>
-            <p className="text-lg text-muted-foreground mt-1">
+            <p className="text-base sm:text-lg text-muted-foreground mt-1">
               Stay updated on your child's study activities and progress.
             </p>
           </div>
 
           {/* Subjects Progress Section */}
-          <Card className="shadow-xl border-border/80 mb-8">
+          <Card className="shadow-xl border-border/80 mb-6 sm:mb-8">
             <CardHeader>
-              <CardTitle className="font-headline text-3xl flex items-center">
-                <BarChart3 className="mr-3 h-8 w-8 text-primary" />
+              <CardTitle className="font-headline text-xl sm:text-2xl lg:text-3xl flex items-center">
+                <BarChart3 className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-primary" />
                 Subject Progress
               </CardTitle>
-              <CardDescription>
-                View topics covered vs. pending for each subject {studentName} is studying.
+              <CardDescription className="text-sm sm:text-base">
+                View topics covered, quiz performance, and last accessed materials for {studentName}.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 sm:space-y-6">
               {mockSubjectsProgress.length === 0 ? (
-                <p className="text-muted-foreground">No subject data available for {studentName} yet.</p>
+                <p className="text-muted-foreground text-center py-4">No subject data available for {studentName} yet.</p>
               ) : (
-                mockSubjectsProgress.map(subject => (
-                  <Card key={subject.id} className="bg-muted/40">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl flex justify-between items-center">
-                        {subject.name}
-                        <span className={`text-sm font-medium px-2 py-1 rounded-full ${subject.topicsCovered === subject.topicsTotal ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {subject.topicsCovered === subject.topicsTotal ? <CheckCircle2 className="inline mr-1 h-4 w-4"/> : null}
-                          {subject.topicsCovered} / {subject.topicsTotal} Topics Covered
-                        </span>
-                      </CardTitle>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {mockSubjectsProgress.map(subject => (
+                  <Card key={subject.id} className="bg-card border-border/60 hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2 sm:pb-3">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg sm:text-xl font-semibold">{subject.name}</CardTitle>
+                        <Badge variant={subject.topicsCovered === subject.topicsTotal ? "default" : "secondary"} className={`${subject.topicsCovered === subject.topicsTotal ? 'bg-green-500/80 text-white' : 'bg-blue-500/80 text-white'} text-xs sm:text-sm`}>
+                          {subject.topicsCovered === subject.topicsTotal && <CheckCircle2 className="inline mr-1.5 h-4 w-4"/>}
+                          {subject.topicsCovered} / {subject.topicsTotal} Topics
+                        </Badge>
+                      </div>
+                       <Progress 
+                            value={(subject.topicsCovered / subject.topicsTotal) * 100} 
+                            className="h-2 sm:h-2.5 mt-2" 
+                            indicatorClassName={subject.topicsCovered === subject.topicsTotal ? "bg-green-500" : "bg-primary"}
+                        />
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-1">Last material accessed: <em>{subject.lastStudiedFile}</em></p>
-                       {/* Progress Bar (Simple) */}
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                            <div 
-                                className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" 
-                                style={{ width: `${(subject.topicsCovered / subject.topicsTotal) * 100}%` }}
-                            ></div>
-                        </div>
+                    <CardContent className="text-xs sm:text-sm space-y-1.5">
+                      <p className="text-muted-foreground">Last material: <em className="text-foreground">{subject.lastStudiedFile}</em></p>
+                      <p className="text-muted-foreground">Quiz Attempts: <span className="font-medium text-foreground">{subject.quizAttempts}</span></p>
+                      <p className="text-muted-foreground">Average Score: <span className={`font-medium ${subject.avgScore >= 70 ? 'text-green-600' : 'text-orange-600'}`}>{subject.avgScore > 0 ? `${subject.avgScore}%` : 'N/A'}</span></p>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
                        <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleAskQuestion(subject.name, subject.lastStudiedFile)}
+                          onClick={() => handleAskQuestionOnFile(subject.name, subject.lastStudiedFile)}
+                          className="w-full sm:w-auto"
                         >
-                         <MessageCircleQuestion className="mr-2 h-4 w-4" /> Ask AI about "{subject.lastStudiedFile}"
+                         <MessageCircleQuestion className="mr-1.5 h-4 w-4" /> Ask AI about "{truncateFileName(subject.lastStudiedFile)}"
+                       </Button>
+                       <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewDetailedReport(subject.name)}
+                          className="w-full sm:w-auto text-primary"
+                        >
+                         <Search className="mr-1.5 h-4 w-4" /> View Report
                        </Button>
                     </CardFooter>
                   </Card>
-                ))
+                ))}
+                </div>
               )}
-              <p className="text-xs text-muted-foreground pt-4 border-t mt-4">Progress data is currently mocked. Real data requires backend integration.</p>
+              <p className="text-xs text-muted-foreground pt-4 border-t mt-4 text-center">
+                Progress data is currently mocked. Real data requires backend integration.
+              </p>
             </CardContent>
           </Card>
           
-          {/* Other Parent Features - Placeholder */}
-          <Card className="shadow-lg">
+          <Card className="shadow-lg border-border/80">
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">More Parent Tools (Coming Soon)</CardTitle>
+                <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
+                    <Brain className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-accent" />
+                    Parental AI Tools (Coming Soon)
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
+                    Future tools to help you support {studentName}'s learning journey.
+                </CardDescription>
             </CardHeader>
-            <CardContent>
-                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>Detailed quiz performance reports.</li>
-                    <li>Study time tracking.</li>
-                    <li>Communication channel with student (via app).</li>
-                </ul>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm sm:text-base">
+                <div className="p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-semibold mb-1">Custom Quiz Generation</h4>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Create quizzes on specific weak areas identified from reports.</p>
+                </div>
+                 <div className="p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-semibold mb-1">Study Habit Insights</h4>
+                    <p className="text-muted-foreground text-xs sm:text-sm">AI-driven suggestions based on study patterns.</p>
+                </div>
+                 <div className="p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-semibold mb-1">Learning Resource Curation</h4>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Suggest supplementary materials for challenging topics.</p>
+                </div>
+                 <div className="p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-semibold mb-1">Goal Setting & Tracking</h4>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Collaborate with {studentName} to set and monitor academic goals.</p>
+                </div>
             </CardContent>
           </Card>
 
         </main>
       </div>
-       <footer className="py-6 text-center text-muted-foreground border-t bg-card">
+       <footer className="py-4 sm:py-6 text-center text-sm text-muted-foreground border-t bg-card">
         <p>&copy; {new Date().getFullYear()} StudyGenie AI. Parent Dashboard.</p>
       </footer>
     </div>
   );
 }
+
+// Helper function to truncate file names
+function truncateFileName(name: string, maxLength: number = 20): string {
+  if (name.length <= maxLength) return name;
+  const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
+  const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
+  if (baseName.length <= maxLength - extension.length - 3) return name; // If basename is short enough with extension
+  return `${baseName.substring(0, maxLength - extension.length - 3)}...${extension}`;
+}
+
+// Add this to your shadcn/ui Progress component if it doesn't already support indicatorClassName
+// This is a conceptual addition, actual implementation depends on your Progress component structure.
+// You might need to modify `components/ui/progress.tsx` to accept `indicatorClassName`
+// and apply it to the ProgressPrimitive.Indicator.
+// Example modification in `components/ui/progress.tsx`:
+// const Progress = React.forwardRef<..., { indicatorClassName?: string }>(
+//   ({ className, value, indicatorClassName, ...props }, ref) => (
+//     ...
+//     <ProgressPrimitive.Indicator
+//       className={cn("h-full w-full flex-1 bg-primary transition-all", indicatorClassName)}
+//       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+//     />
+//     ...
+//   )
+// );
+// Make sure your actual Progress component can accept and use `indicatorClassName`.
+// For now, the color is directly applied in the style prop based on completion.
+// A better approach is to use CSS variables or variants if supported by your Progress component.

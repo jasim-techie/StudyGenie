@@ -1,21 +1,25 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { StudyRoomSubject, UploadedFile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircle, UploadCloud, FileText, Trash2, BookOpen, CheckSquare } from "lucide-react";
+import { PlusCircle, UploadCloud, FileText, Trash2, BookOpen, CheckSquare, FileUp, AlertTriangle, GripVertical } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+
+const MAX_FILENAME_LENGTH = 30;
 
 export function StudyRoom() {
   const [subjects, setSubjects] = useState<StudyRoomSubject[]>([]);
   const [newSubjectName, setNewSubjectName] = useState("");
   const { toast } = useToast();
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const handleAddSubject = () => {
     if (newSubjectName.trim() === "") {
@@ -27,23 +31,27 @@ export function StudyRoom() {
       { id: crypto.randomUUID(), name: newSubjectName, files: [] },
     ]);
     setNewSubjectName("");
-    toast({ title: "Success", description: `Subject "${newSubjectName}" added.`});
+    toast({ title: "Subject Added", description: `"${newSubjectName}" has been added to your study room.`});
   };
 
   const handleRemoveSubject = (subjectId: string) => {
     setSubjects(subjects.filter(s => s.id !== subjectId));
-    toast({ title: "Success", description: `Subject removed.`});
+    toast({ title: "Subject Removed", description: `Subject has been removed.`});
   };
+
+  const triggerFileInput = (subjectId: string) => {
+    fileInputRefs.current[subjectId]?.click();
+  }
 
   const handleFileUpload = (subjectId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Placeholder for actual file upload logic
       const newFile: UploadedFile = {
         id: crypto.randomUUID(),
         name: file.name,
-        type: file.name.split('.').pop() as UploadedFile['type'] || 'doc', // Basic type detection
+        type: file.name.split('.').pop()?.toLowerCase() as UploadedFile['type'] || 'doc',
         isStudied: false,
+        // In a real app, you'd handle the upload here and store a URL or reference
       };
       setSubjects(
         subjects.map((subject) =>
@@ -52,11 +60,10 @@ export function StudyRoom() {
             : subject
         )
       );
-      toast({ title: "File 'Uploaded'", description: `${file.name} added to subject. (This is a placeholder, no actual upload occurred)`});
+      toast({ title: "File Added (Simulated)", description: `${file.name} added to subject. Actual file upload requires backend.`});
     }
-     // Reset file input to allow uploading the same file again if needed
     if (event.target) {
-      event.target.value = "";
+      event.target.value = ""; // Reset file input
     }
   };
   
@@ -86,28 +93,40 @@ export function StudyRoom() {
     );
   };
 
-  const getFileIcon = (fileType: UploadedFile['type']) => {
-    // This can be expanded with more specific icons
-    if (fileType === 'pdf') return <FileText className="h-5 w-5 text-red-500" />;
-    if (fileType === 'ppt' || fileType === 'pptx') return <FileText className="h-5 w-5 text-orange-500" />;
-    if (fileType === 'doc' || fileType === 'docx') return <FileText className="h-5 w-5 text-blue-500" />;
-    if (fileType === 'img' || fileType === 'png' || fileType === 'jpg') return <FileText className="h-5 w-5 text-green-500" />; // Placeholder, could use ImageIcon
-    return <FileText className="h-5 w-5 text-gray-500" />;
+  const getFileIcon = (fileType: UploadedFile['type'] | undefined) => {
+    const type = fileType?.toLowerCase();
+    if (type === 'pdf') return <FileText className="h-5 w-5 text-red-600" />;
+    if (['ppt', 'pptx'].includes(type || '')) return <FileText className="h-5 w-5 text-orange-500" />;
+    if (['doc', 'docx'].includes(type || '')) return <FileText className="h-5 w-5 text-blue-600" />;
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(type || '')) return <FileText className="h-5 w-5 text-green-600" />; // Could use ImageIcon
+    if (type === 'txt') return <FileText className="h-5 w-5 text-gray-700" />;
+    return <FileText className="h-5 w-5 text-muted-foreground" />;
   };
+  
+  const truncateFileName = (name: string, maxLength: number = MAX_FILENAME_LENGTH) => {
+    if (name.length <= maxLength) return name;
+    const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
+    const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
+    const truncatedBaseName = baseName.substring(0, maxLength - extension.length - 3); // -3 for "..."
+    return `${truncatedBaseName}...${extension}`;
+  }
+
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <Card className="shadow-xl border-border/80">
         <CardHeader>
-          <CardTitle className="font-headline text-3xl flex items-center">
-            <BookOpen className="mr-3 h-8 w-8 text-primary" />
+          <CardTitle className="font-headline text-2xl sm:text-3xl flex items-center">
+            <BookOpen className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-primary" />
             My Study Room
           </CardTitle>
-          <CardDescription>Organize your notes and track your study progress for each subject.</CardDescription>
+          <CardDescription className="text-sm sm:text-base">
+            Organize your notes and track your study progress for each subject.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-2 items-end">
-            <div className="flex-grow">
+            <div className="flex-grow w-full sm:w-auto">
               <Label htmlFor="new-subject" className="text-base font-medium">Add New Subject</Label>
               <Input
                 id="new-subject"
@@ -115,100 +134,122 @@ export function StudyRoom() {
                 value={newSubjectName}
                 onChange={(e) => setNewSubjectName(e.target.value)}
                 className="mt-1 text-base h-11"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
               />
             </div>
-            <Button onClick={handleAddSubject} className="w-full sm:w-auto text-base py-3 h-11">
+            <Button onClick={handleAddSubject} className="w-full sm:w-auto text-base py-3 h-11 shrink-0">
               <PlusCircle className="mr-2 h-5 w-5" /> Add Subject
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Tip: Subjects added here are for organizing your notes. They are separate from study plan subjects for now.</p>
+          <p className="text-xs text-muted-foreground">
+            Subjects added here are for local organization. Full persistence requires login & backend.
+          </p>
         </CardContent>
       </Card>
 
       {subjects.length === 0 && (
-        <Card className="shadow-md">
+        <Card className="shadow-md border-border/60">
           <CardContent className="pt-6 text-center text-muted-foreground">
-            <p>No subjects added yet. Add a subject to start organizing your study materials!</p>
+            <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+            <p className="font-medium">Your Study Room is Empty</p>
+            <p className="text-sm">Add a subject above to start organizing your materials.</p>
           </CardContent>
         </Card>
       )}
 
       <Accordion type="multiple" className="w-full space-y-4">
-        {subjects.map((subject) => (
+        {subjects.map((subject, subjectIndex) => (
           <AccordionItem value={subject.id} key={subject.id} className="bg-card border border-border/60 rounded-lg shadow-md overflow-hidden">
-            <AccordionTrigger className="text-xl font-medium hover:bg-secondary/30 px-6 py-4 transition-colors duration-150 ease-in-out">
+            <AccordionTrigger className="text-lg sm:text-xl font-medium hover:bg-muted/20 data-[state=open]:bg-muted/20 px-4 sm:px-6 py-3 sm:py-4 transition-colors duration-150 ease-in-out">
               <div className="flex justify-between items-center w-full">
-                <span>{subject.name}</span>
+                <div className="flex items-center gap-2">
+                  <GripVertical className="h-5 w-5 text-muted-foreground hidden sm:block" />
+                  <span>{subject.name}</span>
+                </div>
                 <Button 
                   asChild
                   variant="ghost" 
                   size="icon" 
                   onClick={(e) => { 
-                    e.stopPropagation(); // Prevent accordion toggle
+                    e.stopPropagation(); 
                     handleRemoveSubject(subject.id); 
                   }} 
-                  className="text-destructive hover:bg-destructive/10"
+                  className="text-destructive hover:bg-destructive/10 h-8 w-8 sm:h-9 sm:w-9"
                   aria-label={`Remove subject ${subject.name}`}
                 >
-                  <span role="button" tabIndex={0}>
-                    <Trash2 className="h-5 w-5" />
+                  <span role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleRemoveSubject(subject.id)}>
+                    <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   </span>
                 </Button>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-6 py-4 border-t">
+            <AccordionContent className="px-4 sm:px-6 py-4 border-t bg-muted/10">
               <div className="space-y-4">
-                <Label
-                  htmlFor={`file-upload-${subject.id}`}
-                  className="w-full sm:w-auto cursor-pointer inline-block"
-                >
-                  <Button asChild variant="outline" className="w-full sm:w-auto">
-                    <span>
-                      <UploadCloud className="mr-2 h-4 w-4" /> Upload Notes (PDF, PPT, DOC, Image)
-                    </span>
-                  </Button>
-                  <Input
-                    id={`file-upload-${subject.id}`}
-                    type="file"
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(subject.id, e)}
-                    accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.png,.jpg,.jpeg" // Example accept types
-                  />
-                </Label>
+                <div className="flex justify-end">
+                    <Button variant="outline" size="sm" onClick={() => triggerFileInput(subject.id)}>
+                        <FileUp className="mr-2 h-4 w-4" /> Upload Notes
+                    </Button>
+                    <Input
+                        id={`file-upload-${subject.id}`}
+                        type="file"
+                        ref={el => fileInputRefs.current[subject.id] = el}
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(subject.id, e)}
+                        accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.svg"
+                    />
+                </div>
 
                 {subject.files.length === 0 ? (
-                  <p className="text-muted-foreground italic">No files uploaded for this subject yet.</p>
+                  <div className="text-center py-4 text-muted-foreground">
+                    <UploadCloud className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                    <p className="text-sm">No files uploaded for this subject yet.</p>
+                    <p className="text-xs">Click "Upload Notes" to add your materials.</p>
+                  </div>
                 ) : (
-                  <ul className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {subject.files.map((file) => (
-                      <li
+                      <Card
                         key={file.id}
-                        className={`flex items-center justify-between space-x-3 p-3 rounded-md border transition-all ${file.isStudied ? 'bg-green-500/10 border-green-500/30' : 'bg-muted/30'}`}
+                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 p-3 rounded-md border transition-all ${file.isStudied ? 'bg-green-500/10 border-green-500/40 hover:border-green-500/60' : 'bg-background hover:border-primary/50'}`}
                       >
-                        <div className="flex items-center space-x-3 flex-grow">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-grow min-w-0">
                           {getFileIcon(file.type)}
-                          <span className={`text-sm ${file.isStudied ? 'line-through text-muted-foreground' : ''}`}>{file.name}</span>
+                          <span 
+                            title={file.name}
+                            className={`text-sm font-medium truncate ${file.isStudied ? 'line-through text-muted-foreground' : 'text-foreground'}`}
+                          >
+                            {truncateFileName(file.name)}
+                          </span>
+                          {file.isStudied && <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs h-5">Studied</Badge>}
                         </div>
-                        <div className="flex items-center space-x-2">
-                           <Checkbox
-                            id={`studied-${subject.id}-${file.id}`}
-                            checked={file.isStudied}
-                            onCheckedChange={() => toggleFileStudied(subject.id, file.id)}
-                            aria-label={`Mark ${file.name} as studied`}
-                          />
-                          <Label htmlFor={`studied-${subject.id}-${file.id}`} className="text-xs cursor-pointer select-none">
-                            {file.isStudied ? 'Studied' : 'Mark as Studied'}
-                          </Label>
+                        <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end sm:justify-normal mt-2 sm:mt-0">
+                           <div className="flex items-center space-x-1.5">
+                             <Checkbox
+                                id={`studied-${subject.id}-${file.id}`}
+                                checked={file.isStudied}
+                                onCheckedChange={() => toggleFileStudied(subject.id, file.id)}
+                                aria-label={`Mark ${file.name} as studied`}
+                                className="h-5 w-5"
+                              />
+                              <Label htmlFor={`studied-${subject.id}-${file.id}`} className="text-xs cursor-pointer select-none">
+                                {file.isStudied ? 'Mark Unstudied' : 'Mark as Studied'}
+                              </Label>
+                           </div>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:bg-destructive/10" onClick={() => handleRemoveFile(subject.id, file.id)}>
                             <Trash2 className="h-4 w-4"/>
                             <span className="sr-only">Remove file</span>
                           </Button>
                         </div>
-                      </li>
+                      </Card>
                     ))}
-                  </ul>
+                  </div>
                 )}
-                 <p className="text-xs text-muted-foreground pt-2 border-t mt-4">File uploads are simulated. Actual file storage requires backend setup.</p>
+                {subject.files.length > 0 && (
+                    <p className="text-xs text-muted-foreground pt-3 border-t mt-3">
+                        <AlertTriangle className="inline h-3 w-3 mr-1" />
+                        File uploads are simulated. Actual storage and viewing requires backend setup.
+                    </p>
+                )}
               </div>
             </AccordionContent>
           </AccordionItem>
