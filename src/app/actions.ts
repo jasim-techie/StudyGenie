@@ -5,7 +5,8 @@
 import { generateStudySchedule, GenerateStudyScheduleInput } from "@/ai/flows/generate-study-schedule";
 import { suggestLearningResources, SuggestLearningResourcesInput } from "@/ai/flows/suggest-learning-resources";
 import { createQuizFromNotes, CreateQuizFromNotesInput } from "@/ai/flows/create-quiz-from-notes";
-import { generateTopicImage } from "@/ai/flows/generate-topic-image-flow"; // New import
+import { generateTopicImage } from "@/ai/flows/generate-topic-image-flow";
+import { extractTextFromImage, ExtractTextFromImageInput } from "@/ai/flows/extract-text-from-image-flow"; // New import
 import type { GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, CreatedQuizOutput } from "@/lib/types";
 
 // Helper to convert File to Data URI
@@ -15,32 +16,43 @@ async function fileToDataUri(file: File): Promise<string> {
   return `data:${file.type};base64,${buffer.toString('base64')}`;
 }
 
+export async function handleImageUploadForTopicExtraction(
+  imageDataUri: string
+): Promise<{ extractedText: string | null; error?: string }> {
+  try {
+    const input: ExtractTextFromImageInput = { imageDataUri };
+    const result = await extractTextFromImage(input);
+    return { extractedText: result.extractedText };
+  } catch (error) {
+    console.error("Error extracting text from image:", error);
+    return { extractedText: null, error: error instanceof Error ? error.message : "Failed to extract text from image." };
+  }
+}
+
 export async function handleGenerateStudyPlan(
   data: Omit<GenerateStudyScheduleInput, 'topicImageInputs' | 'subjects' | 'topics'> & {
     subjects: string[];
-    topics: string[];
-    topicsForResources: string[];
-    topicImages?: FileList;
+    topics: string; // Topics can now be a block of text from OCR or comma-separated
+    topicsForResources: string[]; // This should ideally be derived from the final topics
+    topicImages?: FileList; // Supplementary images for topics
   }
 ): Promise<{ schedule: GeneratedStudyScheduleOutput | null; resources: SuggestedLearningResourcesOutput | null; error?: string }> {
   try {
     let topicImageInputsForSchedule: string[] | undefined = undefined;
+    const topicsArray = data.topics.split(',').map(t => t.trim()).filter(t => t); // Attempt to split if comma-separated for image gen
 
     if (data.topicImages && data.topicImages.length > 0) {
-      // User uploaded images, use them
       const imagePromises = Array.from(data.topicImages).map(file => fileToDataUri(file));
       topicImageInputsForSchedule = await Promise.all(imagePromises);
-    } else if (data.topics && data.topics.length > 0) {
-      // No images uploaded by user, try to generate them for each topic
-      // Note: Toast notifications should be handled client-side before calling this action.
+    } else if (topicsArray.length > 0) { // Use split topics for generating individual images
       console.log("Attempting to generate topic images as none were uploaded.");
-      const generatedImagePromises = data.topics.map(async (topic) => {
+      const generatedImagePromises = topicsArray.map(async (topic) => {
         try {
           const result = await generateTopicImage({ topicText: topic });
           return result.imageDataUri;
         } catch (genError) {
           console.warn(`Failed to generate image for topic "${topic}":`, genError instanceof Error ? genError.message : String(genError));
-          return null; // Return null if image generation fails for a topic
+          return null;
         }
       });
       const generatedImages = (await Promise.all(generatedImagePromises)).filter(img => img !== null) as string[];
@@ -54,7 +66,10 @@ export async function handleGenerateStudyPlan(
 
     const scheduleInput: GenerateStudyScheduleInput = {
       subjects: data.subjects,
-      topics: data.topics,
+      // Pass the topics string directly. The AI flow for schedule generation will handle it.
+      // If it's a block of text from OCR, the AI needs to interpret it.
+      // If it's comma-separated, it will work as before.
+      topics: [data.topics], // Send as an array with one element (the block of text or comma-separated list)
       examDate: data.examDate,
       startDate: data.startDate,
       availableStudyHoursPerDay: data.availableStudyHoursPerDay,
@@ -62,9 +77,11 @@ export async function handleGenerateStudyPlan(
     };
     const schedule = await generateStudySchedule(scheduleInput);
 
+    // For resources, use the topicsArray derived from splitting, or a more sophisticated method if topics is a block
+    // For simplicity, if data.topics is a large block, topicsForResources might need separate handling or use the same block
     const resourcesInput: SuggestLearningResourcesInput = {
       subject: data.subjects.join(', '), 
-      topics: data.topicsForResources,
+      topics: data.topicsForResources.length > 0 ? data.topicsForResources : topicsArray, // Fallback to topicsArray
     };
     const resources = await suggestLearningResources(resourcesInput);
     
