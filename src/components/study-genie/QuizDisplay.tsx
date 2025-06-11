@@ -31,7 +31,7 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
         ...parsedQuiz,
         questions: parsedQuiz.questions.map((q, index) => ({
           ...q,
-          id: q.id || \`q-\${index}\`
+          id: q.id || `q-${index}` // Corrected line: removed backslash
         }))
       };
       setQuiz(quizWithIds);
@@ -41,7 +41,7 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
       setScore(0);
     } catch (error) {
       console.error("Failed to parse quiz JSON:", error);
-      setQuiz(null);
+      setQuiz(null); 
     }
   }, [quizJson]);
 
@@ -79,6 +79,17 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
         <XCircle className="h-4 w-4" />
         <AlertTitle>Error Loading Quiz</AlertTitle>
         <AlertDescription>There was an issue loading the quiz. Please try generating it again.</AlertDescription>
+      </Alert>
+    );
+  }
+  
+  // Handle case where there are no questions
+  if (quiz.questions.length === 0) {
+    return (
+      <Alert variant="destructive">
+        <XCircle className="h-4 w-4" />
+        <AlertTitle>Empty Quiz</AlertTitle>
+        <AlertDescription>This quiz has no questions. Please try generating it again with different notes.</AlertDescription>
       </Alert>
     );
   }
@@ -126,6 +137,18 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
     );
   }
 
+  // This part will only be reached if quiz exists, has questions, and showResults is false
+  if (!currentQuestion) {
+    // This should ideally not be reached if the empty quiz check above works, but as a safeguard:
+    return (
+      <Alert variant="destructive">
+        <XCircle className="h-4 w-4" />
+        <AlertTitle>Quiz Error</AlertTitle>
+        <AlertDescription>Could not load the current question. Please try generating the quiz again.</AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <Card className="shadow-lg w-full max-w-2xl mx-auto">
       <CardHeader>
@@ -147,10 +170,10 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
             {currentQuestion.options.map((option, index) => (
               <Label
                 key={index}
-                htmlFor={\`\${currentQuestion.id}-option-\${index}\`}
+                htmlFor={`\${currentQuestion.id}-option-\${index}`}
                 className="flex items-center space-x-3 p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary"
               >
-                <RadioGroupItem value={option} id={\`\${currentQuestion.id}-option-\${index}\`} />
+                <RadioGroupItem value={option} id={`\${currentQuestion.id}-option-\${index}`} />
                 <span>{option}</span>
               </Label>
             ))}
