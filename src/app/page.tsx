@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react"; // Added Suspense
 import { Header } from "@/components/study-genie/Header";
 import { StudyPlanForm } from "@/components/study-genie/StudyPlanForm";
 import { TimetableDisplay } from "@/components/study-genie/TimetableDisplay";
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleGenerateStudyPlan, handleCreateQuiz } from "./actions";
-import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry as FormSubjectEntry } from "@/lib/types"; // Renamed SubjectEntry to FormSubjectEntry
+import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry as FormSubjectEntry } from "@/lib/types";
 import { format } from "date-fns";
 
 export default function HomePage() {
@@ -33,17 +33,16 @@ export default function HomePage() {
     setSchedule(null);
     setResources(null);
     
-    // Map form data to the structure expected by handleGenerateStudyPlan
     const formattedSubjects: FormSubjectEntry[] = data.subjects.map(s => ({
         id: s.id,
         name: s.name,
-        topics: s.topics, // topicInputMode removed, topics is now always the source
+        topics: s.topics,
         notesImageForTopics: s.notesImageForTopics,
         ocrTextPreview: s.ocrTextPreview
     }));
     
     const hasAnyTopicText = formattedSubjects.some(s => s.topics && s.topics.trim() !== "");
-    const willGenerateImages = hasAnyTopicText; // Simpler logic: if topics exist, images might be generated
+    const willGenerateImages = hasAnyTopicText;
 
     if (willGenerateImages) {
       toast({ title: "Generating Study Plan & Topic Images", description: "AI is crafting your plan and may create images for your topics. This can take a moment..." });
@@ -56,7 +55,6 @@ export default function HomePage() {
       examDate: format(data.examDate, "yyyy-MM-dd"),
       startDate: format(data.startDate, "yyyy-MM-dd"),
       availableStudyHoursPerDay: data.studyHoursPerDay,
-      // supplementaryTopicImages removed from here
     });
 
     if (result.error) {
@@ -80,17 +78,27 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <Suspense fallback={<div className="h-[68px] sm:h-[76px] w-full bg-card/95 border-b shadow-sm"> {/* Placeholder for header height */}
+        <div className="container mx-auto flex items-center justify-between h-full">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 bg-muted rounded-full animate-pulse"></div>
+            <div className="h-6 w-32 bg-muted rounded animate-pulse"></div>
+          </div>
+          <div className="h-8 w-24 bg-muted rounded animate-pulse"></div>
+        </div>
+      </div>}>
+        <Header />
+      </Suspense>
       <main className="flex-grow container mx-auto px-4 py-8">
         <Tabs defaultValue="study-plan" className="w-full">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 md:w-fit mx-auto mb-8">
             <TabsTrigger value="study-plan" className="text-base py-2.5">
               <BookCopy className="mr-2 h-5 w-5" /> Study Plan Generator
             </TabsTrigger>
-            <TabsTrigger value="quiz-maker" className="text-base py-2.5">
+            <TabsTrigger value="quiz-maker" id="quiz-maker" className="text-base py-2.5">
               <HelpCircleIcon className="mr-2 h-5 w-5" /> Quiz Maker
             </TabsTrigger>
-            <TabsTrigger value="key-points" className="text-base py-2.5">
+            <TabsTrigger value="key-points" id="key-points" className="text-base py-2.5">
               <Sparkles className="mr-2 h-5 w-5" /> Key Point Extractor
             </TabsTrigger>
           </TabsList>
