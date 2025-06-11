@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { StudyPlanFormValues, SubjectEntry } from "@/lib/types";
-import { type ChangeEvent, useState, useRef } from "react";
+import { type ChangeEvent, useState, useRef, useEffect } from "react"; // Added useEffect
 import { useToast } from "@/hooks/use-toast";
 import { handleImageUploadForTopicExtraction } from "@/app/actions";
 
@@ -59,8 +59,8 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     defaultValues: {
       subjects: [{ id: crypto.randomUUID(), name: "", topics: "", notesImageForTopics: null, ocrTextPreview: null }],
       studyHoursPerDay: 3,
-      startDate: new Date(),
-      examDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+      startDate: undefined, // Initialize as undefined
+      examDate: undefined, // Initialize as undefined
     },
   });
 
@@ -68,6 +68,18 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     control: form.control,
     name: "subjects",
   });
+
+  // Set default dates on client-side after mount to avoid hydration mismatch
+  useEffect(() => {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+    form.setValue('startDate', today, { shouldValidate: false, shouldDirty: false });
+    form.setValue('examDate', thirtyDaysFromNow, { shouldValidate: false, shouldDirty: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures this runs once on mount
+
 
   const handleNotesImageChangeForSubject = async (subjectIndex: number, event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -108,6 +120,16 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
   };
 
   async function handleSubmit(values: FormSchemaType) {
+    // Ensure dates are set before submission (Zod schema already requires them)
+    if (!values.startDate || !values.examDate) {
+        toast({
+            title: "Dates Required",
+            description: "Please ensure both start and exam dates are selected.",
+            variant: "destructive"
+        });
+        return;
+    }
+
     for (let i = 0; i < values.subjects.length; i++) {
       const subject = values.subjects[i];
       if (!subject.topics || subject.topics.trim() === "") {
@@ -249,7 +271,11 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0,0,0,0); // Compare against start of today
+                        return date < new Date(today.setDate(today.getDate() - 1)); // Disable dates before yesterday
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -288,7 +314,16 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < (form.getValues("startDate") || new Date())}
+                      disabled={(date) => {
+                        const currentStartDate = form.getValues("startDate");
+                        if (currentStartDate instanceof Date && !isNaN(currentStartDate.getTime())) {
+                           return date < currentStartDate;
+                        }
+                        // If startDate is not yet set or invalid, disable all past dates as a fallback
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        return date < today;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -324,5 +359,4 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     </Form>
   );
 }
-
     
