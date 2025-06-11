@@ -16,11 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock } from "lucide-react";
+import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageUp } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import type { StudyPlanFormValues } from "@/lib/types";
+import type { StudyPlanFormValues } from "@/lib/types"; // Adjusted to use the imported type fully
+import type { ChangeEvent } from "react";
+
 
 const formSchema = z.object({
   subjects: z.string().min(1, "Please enter at least one subject."),
@@ -28,15 +30,18 @@ const formSchema = z.object({
   examDate: z.date({ required_error: "Exam date is required." }),
   startDate: z.date({ required_error: "Start date is required." }),
   studyHoursPerDay: z.coerce.number().min(0.5, "Minimum 0.5 hours").max(12, "Maximum 12 hours"),
+  topicImages: z.instanceof(FileList).optional(),
 });
 
+type FormSchemaType = z.infer<typeof formSchema>;
+
 interface StudyPlanFormProps {
-  onSubmit: (data: StudyPlanFormValues) => void;
+  onSubmit: (data: StudyPlanFormValues) => void; // StudyPlanFormValues already includes topicImages
   isLoading: boolean;
 }
 
 export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       subjects: "",
@@ -47,8 +52,16 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     },
   });
 
-  function handleSubmit(values: z.infer<typeof formSchema>) {
-    onSubmit(values);
+  async function handleSubmit(values: FormSchemaType) {
+    // The values already match StudyPlanFormValues if we ensure FormSchemaType is compatible
+    // No need to convert topicImages here if the action handler expects FileList
+    // However, the action handler will need to convert FileList to data URIs.
+    // For simplicity, we'll pass FileList and let the action handler deal with it.
+    // If the action handler expects data URIs directly, conversion should happen here.
+    // Let's assume onSubmit (which leads to the server action) can handle FileList
+    // or that the page component will do the conversion.
+    // The type StudyPlanFormValues already defined topicImages as FileList.
+    onSubmit(values as StudyPlanFormValues);
   }
 
   return (
@@ -78,6 +91,27 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                 <Textarea placeholder="e.g., Algebra, Thermodynamics, World War II" {...field} rows={3} />
               </FormControl>
               <FormDescription>Enter topics for each subject, separated by commas.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+         <FormField
+          control={form.control}
+          name="topicImages"
+          render={({ field: { onChange, value, ...restField } }) => (
+            <FormItem>
+              <FormLabel className="flex items-center"><ImageUp className="mr-2 h-4 w-4" />Topic Images (Optional)</FormLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.files)}
+                  {...restField}
+                  className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              </FormControl>
+              <FormDescription>Upload images related to your topics for better context.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

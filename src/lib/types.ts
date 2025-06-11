@@ -4,6 +4,7 @@ export interface StudyPlanFormValues {
   examDate: Date;
   startDate: Date;
   studyHoursPerDay: number;
+  topicImages?: FileList; // For topic image uploads
 }
 
 export interface TimetableEntry {

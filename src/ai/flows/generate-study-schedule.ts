@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview Generates a personalized study timetable using AI.
+ * @fileOverview Generates a personalized study timetable using AI, potentially including image-based topics.
  *
  * - generateStudySchedule - A function that generates the study schedule.
  * - GenerateStudyScheduleInput - The input type for the generateStudySchedule function.
@@ -19,6 +19,7 @@ const GenerateStudyScheduleInputSchema = z.object({
   topics: z
     .array(z.string())
     .describe('List of topics to cover, e.g., Algebra, Thermodynamics, Organic Chemistry.'),
+  topicImageInputs: z.array(z.string().url()).optional().describe('Optional array of topic images as data URIs, providing visual context for the topics.'),
   examDate: z.string().describe('The date of the exam, e.g., 2024-12-31.'),
   startDate: z.string().describe('The date to start studying, e.g., 2024-10-01.'),
   availableStudyHoursPerDay: z
@@ -50,12 +51,19 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateStudyScheduleOutputSchema},
   prompt: `You are an expert study timetable generator. Given the following information, create a study timetable.
 
-Subjects: {{subjects}}
-Topics: {{topics}}
+Subjects: {{{subjects}}}
+Topics: {{{topics}}}
+{{#if topicImageInputs}}
+Visual context for topics:
+{{#each topicImageInputs}}
+{{media url=this}}
+{{/each}}
+{{/if}}
 Exam Date: {{examDate}}
 Start Date: {{startDate}}
 Available Study Hours Per Day: {{availableStudyHoursPerDay}}
 
+Analyze the text topics and any provided visual context to understand the study material.
 Create a timetable that splits the topics across the days, taking into account the available time and difficulty of the topics.
 Provide the timetable in JSON format, making sure to include the date and topics for each session. Also, provide a summary of the study plan, including time allocation per subject.
 `,

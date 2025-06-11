@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, BookCopy, HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleGenerateStudyPlan, handleCreateQuiz } from "./actions";
-import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry } from "@/lib/types";
+import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput } from "@/lib/types";
 import { format } from "date-fns";
 
 export default function HomePage() {
@@ -34,14 +34,15 @@ export default function HomePage() {
 
     const subjectsArray = data.subjects.split(',').map(s => s.trim()).filter(s => s);
     const topicsArray = data.topics.split(',').map(t => t.trim()).filter(t => t);
-
+    
     const result = await handleGenerateStudyPlan({
       subjects: subjectsArray,
       topics: topicsArray,
       examDate: format(data.examDate, "yyyy-MM-dd"),
       startDate: format(data.startDate, "yyyy-MM-dd"),
       availableStudyHoursPerDay: data.studyHoursPerDay,
-      topicsForResources: topicsArray, // You might want more specific topics for resources
+      topicsForResources: topicsArray, 
+      topicImages: data.topicImages, // Pass FileList to action
     });
 
     if (result.error) {
@@ -60,7 +61,7 @@ export default function HomePage() {
   };
   
   const handleRetakeQuiz = () => {
-    setQuizJson(null); // Clear current quiz to allow re-generation or re-upload
+    setQuizJson(null); 
   };
 
 
@@ -107,7 +108,12 @@ export default function HomePage() {
                   onQuizGenerated={onQuizGenerated} 
                   isLoading={quizLoading}
                   setIsLoading={setQuizLoading}
-                  createQuizAction={handleCreateQuiz}
+                  createQuizAction={async (notesDataUri: string): Promise<{ quizData: CreatedQuizOutput | null; error?: string }> => {
+                     const result = await handleCreateQuiz(notesDataUri);
+                     // Explicitly cast to the expected return type if necessary,
+                     // but here the types should align if handleCreateQuiz is correct.
+                     return result as { quizData: CreatedQuizOutput | null; error?: string };
+                  }}
                 />
               ) : (
                 <QuizDisplay quizJson={quizJson} onRetakeQuiz={handleRetakeQuiz} />
