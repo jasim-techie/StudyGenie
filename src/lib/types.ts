@@ -2,7 +2,6 @@
 export interface SubjectEntry {
   id: string; // Unique ID for React key prop
   name: string;
-  // topicInputMode: "manual" | "image"; // Removed: Replaced by direct textarea and OCR button
   topics: string; // Stores manually entered topics or OCR results
   notesImageForTopics?: File | null; // Stores the File object for image upload for OCR
   ocrTextPreview?: string | null; // For displaying OCR result or status
@@ -13,7 +12,6 @@ export interface StudyPlanFormValues {
   examDate: Date;
   startDate: Date;
   studyHoursPerDay: number;
-  // supplementaryTopicImages?: FileList | null; // Removed
 }
 
 export interface TimetableEntry {
@@ -62,16 +60,15 @@ export type SuggestedLearningResourcesOutput = {
 };
 
 export type CreatedQuizOutput = {
-  quiz: string; 
+  quiz: string;
 };
 
 export interface TimeAllocationData {
-  subject: string; // Added subject to TimeAllocationData
+  subject: string; 
   hours: number;
   fill: string;
 }
 
-// Types for Key Point Generator
 export interface GenerateKeyPointsInput {
   answerContent: string;
   markWeightage: number;
@@ -79,4 +76,19 @@ export interface GenerateKeyPointsInput {
 
 export interface GenerateKeyPointsOutput {
   keyPoints: string[];
+}
+
+// Types for Study Room
+export interface UploadedFile {
+  id: string;
+  name: string;
+  type: 'pdf' | 'ppt' | 'doc' | 'txt' | 'img'; // Example types
+  isStudied: boolean;
+  // downloadUrl?: string; // For actual file download
+}
+
+export interface StudyRoomSubject {
+  id: string;
+  name: string;
+  files: UploadedFile[];
 }
