@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { Header } from "@/components/layout/Header";
+import { Header } from "@/components/study-genie/Header";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, HelpCircleIcon, Sparkles, ArrowRight } from "lucide-react";

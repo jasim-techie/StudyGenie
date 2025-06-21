@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, type ChangeEvent } from "react";
@@ -23,7 +24,8 @@ export function TimetableDisplay({ timetable: initialTimetable }: TimetableDispl
     setTimetable(
       initialTimetable.map(entry => ({
         ...entry,
-        completed: Array(entry.topics.length).fill(false),
+        topics: entry.topics || [],
+        completed: Array((entry.topics || []).length).fill(false),
       }))
     );
   }, [initialTimetable]);

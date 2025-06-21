@@ -7,35 +7,23 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { usePathname } from 'next/navigation';
 
 const navLinks = [
-  { href: "/", label: "Study Plan AI", icon: BookOpen },
-  { href: "/#quiz-maker", label: "Quiz Maker", icon: HelpCircleIcon, sectionId: "quiz-maker" },
-  { href: "/#key-points", label: "Key Points", icon: Sparkles, sectionId: "key-points"},
+  { href: "/study-plan", label: "Study Plan", icon: BookOpen },
+  { href: "/quiz-maker", label: "Quiz Maker", icon: HelpCircleIcon },
+  { href: "/key-points", label: "Key Points", icon: Sparkles },
   { href: "/dashboard/student", label: "Student Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/parent", label: "Parent Dashboard", icon: UserCircle },
 ];
 
-
 export function Header() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const pathname = usePathname();
 
   useEffect(() => setMounted(true), []);
 
   const toggleTheme = () => {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  };
-
-  const handleLinkClick = (sectionId?: string) => {
-    if (sectionId && pathname === "/") {
-      const section = document.getElementById(sectionId);
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
   };
 
   return (
@@ -50,7 +38,7 @@ export function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.slice(0,3).map((link) => (
-               <Button key={link.label} variant="ghost" asChild size="sm" onClick={() => handleLinkClick(link.sectionId)}>
+               <Button key={link.label} variant="ghost" asChild size="sm">
                 <Link href={link.href} className="flex items-center gap-1.5">
                   <link.icon className="h-4 w-4" /> {link.label}
                 </Link>
@@ -100,7 +88,6 @@ export function Header() {
                       <SheetClose asChild key={link.label}>
                         <Link
                           href={link.href}
-                          onClick={() => handleLinkClick(link.sectionId)}
                           className="flex items-center gap-3 p-3 rounded-md hover:bg-muted transition-colors text-base"
                         >
                           <link.icon className="h-5 w-5 text-muted-foreground" />

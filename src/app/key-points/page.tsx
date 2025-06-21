@@ -1,8 +1,8 @@
 
 "use client";
 
-import { Header } from "@/components/layout/Header";
-import { KeyPointGenerator } from "@/components/features/key-points/KeyPointGenerator";
+import { Header } from "@/components/study-genie/Header";
+import { KeyPointGenerator } from "@/components/study-genie/KeyPointGenerator";
 import { handleGenerateKeyPoints } from "../actions";
 
 export default function KeyPointsPage() {

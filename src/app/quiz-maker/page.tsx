@@ -2,9 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import { Header } from "@/components/layout/Header";
-import { QuizGenerator } from "@/components/features/quiz/QuizGenerator";
-import { QuizDisplay } from "@/components/features/quiz/QuizDisplay";
+import { Header } from "@/components/study-genie/Header";
+import { QuizGenerator } from "@/components/study-genie/QuizGenerator";
+import { QuizDisplay } from "@/components/study-genie/QuizDisplay";
 import { handleCreateQuiz } from "../actions";
 import type { CreatedQuizOutput } from "@/lib/types";
 

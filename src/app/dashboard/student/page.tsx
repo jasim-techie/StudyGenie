@@ -2,8 +2,8 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { Header } from "@/components/layout/Header";
-import { StudyRoom } from "@/components/features/study-room/StudyRoom";
+import { Header } from "@/components/study-genie/Header";
+import { StudyRoom } from "@/components/study-genie/StudyRoom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, FileQuestion, HelpCircleIcon, Home, LayoutDashboard, LogOut, Settings, Sparkles, User, BrainCircuit, Loader2 } from "lucide-react";
