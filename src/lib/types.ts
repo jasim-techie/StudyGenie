@@ -75,7 +75,7 @@ export interface GenerateKeyPointsInput {
 }
 
 export interface GenerateKeyPointsOutput {
-  keyPoints: string[];
+  keyPointsByTopic: Record<string, string[]>;
 }
 
 // Types for Study Room
