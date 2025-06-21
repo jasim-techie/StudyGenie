@@ -36,12 +36,10 @@ const extractTextFromPdfFlow = ai.defineFlow(
     outputSchema: ExtractTextFromPdfOutputSchema,
   },
   async (input: ExtractTextFromPdfInput) => {
-    // Use ai.generate for potentially better handling of multimodal inputs like PDF data URIs.
-    // Gemini 1.5 Flash is generally good for document understanding.
     const {output} = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest', 
         prompt: [
-            {media: {url: input.pdfDataUri}}, // Pass the PDF data URI as media
+            {media: {url: input.pdfDataUri}},
             {text: "Extract all textual content from this PDF document. Prioritize extracting the main body text. If no text is found, return an empty string. Place the result in the 'extractedText' field of the JSON output."}
         ],
         output: {
@@ -53,8 +51,6 @@ const extractTextFromPdfFlow = ai.defineFlow(
         }
     });
     
-    // The 'output' field from ai.generate contains the structured data.
-    // If output is null or extractedText is missing, return an empty string.
     const extractedText = output?.extractedText || "";
 
     return { extractedText };

@@ -4,11 +4,11 @@
 import { generateStudySchedule, GenerateStudyScheduleInput } from "@/ai/flows/generate-study-schedule";
 import { suggestLearningResources, SuggestLearningResourcesInput } from "@/ai/flows/suggest-learning-resources";
 import { createQuizFromNotes, CreateQuizFromNotesInput } from "@/ai/flows/create-quiz-from-notes";
-import { generateTopicImage } from "@/ai/flows/generate-topic-image-flow"; // Removed GenerateTopicImageInput as it's not used directly by other actions
+import { generateTopicImage } from "@/ai/flows/generate-topic-image-flow";
 import { extractTextFromImage, ExtractTextFromImageInput } from "@/ai/flows/extract-text-from-image-flow";
 import { generateKeyPoints as generateKeyPointsFlow, GenerateKeyPointsInput as GenerateKeyPointsFlowInput } from "@/ai/flows/generateKeyPointsFlow";
-import type { GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, CreatedQuizOutput, SubjectEntry, GenerateKeyPointsOutput, StudyPlanFormValues } from "@/lib/types"; // Added StudyPlanFormValues
-import { extractTextFromPdf } from "@/ai/flows/extract-text-from-pdf-flow"; // Ensure this is imported if used by createQuizFromNotes
+import type { GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, CreatedQuizOutput, SubjectEntry, GenerateKeyPointsOutput, StudyPlanFormValues } from "@/lib/types";
+import { extractTextFromPdf } from "@/ai/flows/extract-text-from-pdf-flow";
 
 // Helper to convert File to Data URI
 async function fileToDataUri(file: File): Promise<string> {
@@ -30,9 +30,7 @@ export async function handleImageUploadForTopicExtraction(
   }
 }
 
-interface HandleGenerateStudyPlanData extends Omit<StudyPlanFormValues, 'supplementaryTopicImages' | 'examDate' | 'startDate'> {
-  // Omit supplementaryTopicImages as it's removed
-  // examDate and startDate will be strings here
+interface HandleGenerateStudyPlanData extends Omit<StudyPlanFormValues, 'examDate' | 'startDate'> {
   examDate: string;
   startDate: string;
 }
@@ -45,7 +43,6 @@ export async function handleGenerateStudyPlan(
     const subjectNames = data.subjects.map(s => s.name);
     const allTopicTexts: string[] = data.subjects.reduce((acc, s) => {
         if (s.topics && s.topics.trim() !== "") {
-            // Split topics by newline or comma, then trim and filter out empty strings
             const individualTopics = s.topics.split(/[\n,]+/).map(topic => topic.trim()).filter(topic => topic !== "");
             acc.push(...individualTopics);
         }
@@ -54,13 +51,10 @@ export async function handleGenerateStudyPlan(
 
     let topicImagesForSchedule: string[] = [];
 
-    // Generate images for topic texts if any exist
-    // This logic runs regardless of per-subject OCR uploads, for manually entered topics or as a fallback.
     if (allTopicTexts.length > 0) {
-        const uniqueTopicTextsForImageGen = Array.from(new Set(allTopicTexts)); // Avoid generating images for duplicate topic strings
+        const uniqueTopicTextsForImageGen = Array.from(new Set(allTopicTexts));
 
         const generatedTopicImagePromises = uniqueTopicTextsForImageGen.map(async (topicText) => {
-            // Create a concise version for image generation prompt if topic is too long
             const imageGenInputText = topicText.length > 100 ? topicText.substring(0, 97) + "..." : topicText;
              if (imageGenInputText) {
                 try {
@@ -68,7 +62,7 @@ export async function handleGenerateStudyPlan(
                     return imageResult.imageDataUri;
                 } catch (imgErr) {
                     console.warn(`Failed to generate image for topic "${topicText}":`, imgErr);
-                    return null; // Continue if one image fails
+                    return null;
                 }
             }
             return null;
@@ -77,8 +71,6 @@ export async function handleGenerateStudyPlan(
         topicImagesForSchedule.push(...generatedImages);
     }
     
-    // Consolidate all unique topic texts for the schedule input.
-    // The generateStudySchedule prompt is designed to handle a list of topics.
     const scheduleInputTopics = allTopicTexts.length > 0 ? Array.from(new Set(allTopicTexts)) : ["General Studies"];
 
 
@@ -94,7 +86,7 @@ export async function handleGenerateStudyPlan(
 
     const resourcesInput: SuggestLearningResourcesInput = {
       subject: subjectNames.join(', ') || "General Studies", 
-      topics: scheduleInputTopics, // Use the same consolidated list for resource suggestions
+      topics: scheduleInputTopics,
     };
     const resources = await suggestLearningResources(resourcesInput);
     
@@ -107,7 +99,7 @@ export async function handleGenerateStudyPlan(
 
 export async function handleCreateQuiz(
   notesText: string,
-  numQuestions: number = 5 // Default to 5 if not provided
+  numQuestions: number = 5
 ): Promise<{ quizData: CreatedQuizOutput | null; error?: string }> {
   try {
     if (!notesText || notesText.trim() === "") {
