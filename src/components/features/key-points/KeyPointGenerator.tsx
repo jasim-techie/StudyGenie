@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -10,12 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, Loader2, ListChecks } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { GenerateKeyPointsOutput } from "@/lib/types";
-import { handleGenerateKeyPoints } from "@/app/actions";
 
 const MAX_WORDS_KEY_POINTS = 5000; // Increased limit for answer content
 const MARK_WEIGHTAGES = [2, 4, 8, 10, 12, 16, 20];
 
-export function KeyPointGenerator() {
+interface KeyPointGeneratorProps {
+  generateKeyPointsAction: (
+    answerContent: string,
+    markWeightage: number
+  ) => Promise<{ keyPointsData: GenerateKeyPointsOutput | null; error?: string }>;
+}
+
+export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGeneratorProps) {
   const [answerContent, setAnswerContent] = useState<string>("");
   const [markWeightage, setMarkWeightage] = useState<number>(MARK_WEIGHTAGES[0]);
   const [wordCount, setWordCount] = useState<number>(0);
@@ -24,7 +30,7 @@ export function KeyPointGenerator() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useState(() => {
+  useEffect(() => {
     const words = answerContent.split(/\s+/).filter(Boolean);
     setWordCount(words.length);
     if (words.length > MAX_WORDS_KEY_POINTS) {
@@ -32,19 +38,11 @@ export function KeyPointGenerator() {
     } else {
       setError(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answerContent]); // Dependency on answerContent
+  }, [answerContent]);
 
   const handleTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
     setAnswerContent(newText);
-    const words = newText.split(/\s+/).filter(Boolean);
-    setWordCount(words.length);
-    if (words.length > MAX_WORDS_KEY_POINTS) {
-      setError(`Word limit exceeded. Maximum ${MAX_WORDS_KEY_POINTS} words allowed.`);
-    } else {
-      setError(null);
-    }
   };
   
   const handleMarkWeightageChange = (value: string) => {
@@ -69,7 +67,7 @@ export function KeyPointGenerator() {
     toast({ title: "Generating Key Points", description: "AI is extracting key points from your content..." });
 
     try {
-      const result = await handleGenerateKeyPoints(answerContent, markWeightage);
+      const result = await generateKeyPointsAction(answerContent, markWeightage);
       if (result.error) {
         throw new Error(result.error);
       }

@@ -14,7 +14,7 @@ import { PdfExportButton } from "@/components/shared/PdfExportButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { handleGenerateStudyPlan, handleCreateQuiz } from "./actions";
+import { handleGenerateStudyPlan, handleCreateQuiz, handleGenerateKeyPoints } from "./actions";
 import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, TimetableEntry, CreatedQuizOutput, SubjectEntry as FormSubjectEntry } from "@/lib/types";
 import { format } from "date-fns";
 
@@ -151,7 +151,7 @@ export default function HomePage() {
 
           <TabsContent value="key-points">
             <div className="space-y-8">
-              <KeyPointGenerator />
+              <KeyPointGenerator generateKeyPointsAction={handleGenerateKeyPoints} />
             </div>
           </TabsContent>
         </Tabs>
