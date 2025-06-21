@@ -17,7 +17,6 @@ export interface StudyPlanFormValues {
 export interface TimetableEntry {
   date: string;
   topics: string[];
-  completed?: boolean[];
 }
 
 export interface StudySchedule {
@@ -45,13 +44,8 @@ export interface Quiz {
   questions: QuizQuestion[];
 }
 
-export type GeneratedTimetableEntry = {
-  date: string;
-  topics: string[];
-};
-
 export type GeneratedStudyScheduleOutput = {
-  timetable: GeneratedTimetableEntry[];
+  timetable: TimetableEntry[];
   summary: string;
 };
 
@@ -82,7 +76,7 @@ export interface GenerateKeyPointsOutput {
 export interface UploadedFile {
   id: string;
   name: string;
-  type: 'pdf' | 'ppt' | 'doc' | 'txt' | 'img'; // Example types
+  type: 'pdf' | 'ppt' | 'pptx' | 'doc' | 'docx' | 'txt' | 'png' | 'jpg' | 'jpeg' | 'gif' | 'svg' ; // Example types
   isStudied: boolean;
   // downloadUrl?: string; // For actual file download
 }

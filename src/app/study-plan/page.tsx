@@ -58,7 +58,7 @@ export default function StudyPlanPage() {
           )}
           {schedule && (
             <div className="mt-8 space-y-8">
-              <TimetableDisplay timetable={schedule.timetable.map(t => ({...t, topics: t.topics || []})) as TimetableEntry[]} />
+              <TimetableDisplay timetable={schedule.timetable} />
               {schedule.summary && schedule.summary.trim() !== "" && <TimeAllocationChart summary={schedule.summary} />}
               {resources && resources.resourceSuggestions && resources.resourceSuggestions.length > 0 && <ResourceSuggestions resources={resources.resourceSuggestions} />}
               <div className="text-center mt-6">
