@@ -5,7 +5,7 @@
  *
  * - extractTextFromPdf - A function that extracts text from a PDF.
  * - ExtractTextFromPdfInput - The input type for the extractTextFromPdf function.
- * - ExtractTextFromPdfOutput - The return type for the extractTextFromPdf function.
+ * - ExtractTextFromPdfOutput - The return type for the extractTextFromPdf function (now a string).
  */
 
 import {ai} from '@/ai/genkit';
@@ -20,10 +20,8 @@ const ExtractTextFromPdfInputSchema = z.object({
 });
 export type ExtractTextFromPdfInput = z.infer<typeof ExtractTextFromPdfInputSchema>;
 
-const ExtractTextFromPdfOutputSchema = z.object({
-  extractedText: z.string().describe('The text extracted from the PDF document.'),
-});
-export type ExtractTextFromPdfOutput = z.infer<typeof ExtractTextFromPdfOutputSchema>;
+// The output is now just a plain string.
+export type ExtractTextFromPdfOutput = string;
 
 export async function extractTextFromPdf(input: ExtractTextFromPdfInput): Promise<ExtractTextFromPdfOutput> {
   return extractTextFromPdfFlow(input);
@@ -33,26 +31,18 @@ const extractTextFromPdfFlow = ai.defineFlow(
   {
     name: 'extractTextFromPdfFlow',
     inputSchema: ExtractTextFromPdfInputSchema,
-    outputSchema: ExtractTextFromPdfOutputSchema,
+    outputSchema: z.string(), // The output schema is now just a string.
   },
   async (input: ExtractTextFromPdfInput) => {
-    const {output} = await ai.generate({
+    const {text} = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest', 
         prompt: [
             {media: {url: input.pdfDataUri}},
-            {text: "Extract all textual content from this PDF document. Prioritize extracting the main body text. If no text is found, return an empty string. Place the result in the 'extractedText' field of the JSON output."}
+            {text: "You are an expert Optical Character Recognition (OCR) system. Extract all text from the provided document. Return only the extracted text as a single block. If no text is found, return an empty string."}
         ],
-        output: {
-             schema: ExtractTextFromPdfOutputSchema, 
-        },
-        config: {
-            // Optional: Adjust safety settings if needed
-            // safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE'}]
-        }
     });
     
-    const extractedText = output?.extractedText || "";
-
-    return { extractedText };
+    // The 'text' field from the response contains the direct text output.
+    return text || "";
   }
 );

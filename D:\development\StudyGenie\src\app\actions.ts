@@ -22,8 +22,8 @@ export async function handleImageUploadForTopicExtraction(
 ): Promise<{ extractedText: string | null; error?: string }> {
   try {
     const input: ExtractTextFromImageInput = { imageDataUri };
-    const result = await extractTextFromImage(input);
-    return { extractedText: result.extractedText };
+    const extractedText = await extractTextFromImage(input); // Now returns a string
+    return { extractedText: extractedText };
   } catch (error) {
     console.error("Error extracting text from image:", error);
     return { extractedText: null, error: error instanceof Error ? error.message : "Failed to extract text from image." };
@@ -131,8 +131,8 @@ export async function handlePdfUploadForKeyPoints(
       return { extractedText: null, error: "Invalid file type. Please upload a PDF." };
     }
     const pdfDataUri = await fileToDataUri(pdfFile);
-    const result = await extractTextFromPdf({ pdfDataUri });
-    return { extractedText: result.extractedText };
+    const extractedText = await extractTextFromPdf({ pdfDataUri }); // Now returns a string
+    return { extractedText: extractedText };
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
     return { extractedText: null, error: error instanceof Error ? error.message : "Failed to extract text from PDF." };

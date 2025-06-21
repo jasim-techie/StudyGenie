@@ -5,7 +5,7 @@
  *
  * - extractTextFromImage - A function that extracts text from an image.
  * - ExtractTextFromImageInput - The input type for the extractTextFromImage function.
- * - ExtractTextFromImageOutput - The return type for the extractTextFromImage function.
+ * - ExtractTextFromImageOutput - The return type for the extractTextFromImage function (now a string).
  */
 
 import {ai} from '@/ai/genkit';
@@ -20,10 +20,8 @@ const ExtractTextFromImageInputSchema = z.object({
 });
 export type ExtractTextFromImageInput = z.infer<typeof ExtractTextFromImageInputSchema>;
 
-const ExtractTextFromImageOutputSchema = z.object({
-  extractedText: z.string().describe('The text extracted from the image.'),
-});
-export type ExtractTextFromImageOutput = z.infer<typeof ExtractTextFromImageOutputSchema>;
+// The output is now just a plain string.
+export type ExtractTextFromImageOutput = string;
 
 export async function extractTextFromImage(input: ExtractTextFromImageInput): Promise<ExtractTextFromImageOutput> {
   return extractTextFromImageFlow(input);
@@ -33,26 +31,18 @@ const extractTextFromImageFlow = ai.defineFlow(
   {
     name: 'extractTextFromImageFlow',
     inputSchema: ExtractTextFromImageInputSchema,
-    outputSchema: ExtractTextFromImageOutputSchema,
+    outputSchema: z.string(), // The output schema is now just a string.
   },
   async (input: ExtractTextFromImageInput) => {
-    const {output} = await ai.generate({
+    const {text} = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
         prompt: [
             {media: {url: input.imageDataUri}},
-            {text: "Extract all text visible in this image. If no text is found, return an empty string. Place the result in the 'extractedText' field of the JSON output."}
+            {text: "You are an expert Optical Character Recognition (OCR) system. Extract all text from the provided image. Return only the extracted text as a single block. If no text is found, return an empty string."}
         ],
-        output: {
-            schema: ExtractTextFromImageOutputSchema,
-        },
-        config: {
-            // Safety settings can be adjusted if needed
-            // safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE'}]
-        }
     });
 
-    const extractedText = output?.extractedText || "";
-
-    return { extractedText: extractedText };
+    // The 'text' field from the response contains the direct text output.
+    return text || "";
   }
 );
