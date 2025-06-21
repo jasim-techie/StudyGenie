@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { TimetableEntry as GeneratedTimetableEntry } from "@/lib/types";
+import type { TimetableEntry as GeneratedTimetableEntry } from "@/lib/types"; // Use GeneratedTimetableEntry to avoid conflict
 import { CalendarClock, CheckCircle2 } from "lucide-react";
 
 interface TimetableEntry extends GeneratedTimetableEntry {

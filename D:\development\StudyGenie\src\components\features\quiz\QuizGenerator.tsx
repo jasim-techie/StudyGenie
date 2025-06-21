@@ -86,7 +86,7 @@ export function QuizGenerator({ onQuizGenerated, isLoading, setIsLoading, create
           Paste Your Study Notes
         </CardTitle>
         <CardDescription>
-          Enter your notes, textbook content, or copied material below (max {MAX_WORDS} words). 
+          Enter your notes, textbook content, or copied material below (max ${MAX_WORDS} words). 
           Our AI will generate a quiz to help you review.
         </CardDescription>
       </CardHeader>

@@ -57,7 +57,7 @@ function StudentPageContent() {
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href="/study-plan"><BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI</Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href="/quiz-maker"><HelpCircleIcon className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Quiz Maker</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
@@ -85,8 +85,8 @@ function StudentPageContent() {
             </p>
           </div>
 
-          <section>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access to AI Tools</h2>
+          <section className="mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {quickLinks.map(link => (
                 <Card key={link.name} className="hover:shadow-lg transition-shadow duration-200 ease-in-out border-border/70 bg-card/80 backdrop-blur-sm">
@@ -113,6 +113,7 @@ function StudentPageContent() {
                 </Card>
             </div>
           </section>
+
         </main>
       </div>
        <footer className="py-4 sm:py-6 text-center text-sm text-muted-foreground border-t bg-card">

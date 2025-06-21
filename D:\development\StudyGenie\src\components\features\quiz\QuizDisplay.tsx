@@ -170,10 +170,10 @@ export function QuizDisplay({ quizJson, onRetakeQuiz }: QuizDisplayProps) {
             {currentQuestion.options.map((option, index) => (
               <Label
                 key={index}
-                htmlFor={`\${currentQuestion.id}-option-\${index}`}
+                htmlFor={`$${currentQuestion.id}-option-${index}`}
                 className="flex items-center space-x-3 p-3 border rounded-md hover:bg-secondary/50 cursor-pointer transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary"
               >
-                <RadioGroupItem value={option} id={`\${currentQuestion.id}-option-\${index}`} />
+                <RadioGroupItem value={option} id={`$${currentQuestion.id}-option-${index}`} />
                 <span>{option}</span>
               </Label>
             ))}
