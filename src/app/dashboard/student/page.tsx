@@ -2,7 +2,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { Header } from "@/components/study-genie/Header";
+import { Header } from "@/components/layout/Header";
 import { StudyRoom } from "@/components/study-genie/StudyRoom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,9 +13,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 
 const quickLinks = [
-  { name: "New Study Plan", href: "/", icon: BookOpen, description: "Generate a personalized study schedule." },
-  { name: "Quiz Maker", href: "/#quiz-maker", icon: HelpCircleIcon, description: "Test your knowledge from notes.", sectionId: "quiz-maker" },
-  { name: "Key Point Extractor", href: "/#key-points", icon: Sparkles, description: "Extract key points from answers.", sectionId: "key-points" },
+  { name: "New Study Plan", href: "/study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
+  { name: "Quiz Maker", href: "/quiz-maker", icon: HelpCircleIcon, description: "Test your knowledge from notes." },
+  { name: "Key Point Extractor", href: "/key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
 
 function StudentPageContent() {
@@ -39,22 +39,6 @@ function StudentPageContent() {
     router.push('/login');
   };
 
-  const handleLinkClick = (href: string, sectionId?: string) => {
-    if (sectionId && href === "/") {
-        // Special handling for navigating to sections on the homepage
-        // Ensure the main page component is loaded first, then scroll
-        router.push('/'); // Navigate to homepage
-        setTimeout(() => { // Delay scrolling to allow page to potentially re-render/load
-            const section = document.getElementById(sectionId);
-            if (section) {
-                section.scrollIntoView({ behavior: 'smooth' });
-            }
-        }, 100); // Adjust delay as needed
-    } else {
-        router.push(href);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
       <Header />
@@ -69,16 +53,16 @@ function StudentPageContent() {
             </div>
             <nav className="space-y-1.5">
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href={`/dashboard/student?name=\${encodeURIComponent(studentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
+                <Link href={`/dashboard/student?name=${encodeURIComponent(studentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => handleLinkClick("/", undefined)}>
-                <BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI
+              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+                <Link href="/study-plan"><BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI</Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => handleLinkClick("/", "quiz-maker")}>
-                <HelpCircleIcon className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Quiz Maker
+              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+                <Link href="/quiz-maker"><HelpCircleIcon className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Quiz Maker</Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => handleLinkClick("/", "key-points")}>
-                <Sparkles className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Key Points
+               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+                <Link href="/key-points"><Sparkles className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Key Points</Link>
               </Button>
             </nav>
           </div>
@@ -114,7 +98,7 @@ function StudentPageContent() {
                     <CardContent>
                     <p className="text-xs sm:text-sm text-muted-foreground mb-2 h-10">{link.description}</p>
                     <Button variant="link" asChild className="p-0 text-primary text-sm">
-                        <Link href={link.href} onClick={(e) => { e.preventDefault(); handleLinkClick(link.href, link.sectionId); }}>Go to {link.name.split(' ')[0]}</Link>
+                        <Link href={link.href}>Go to {link.name.split(' ')[0]}</Link>
                     </Button>
                     </CardContent>
                 </Card>
