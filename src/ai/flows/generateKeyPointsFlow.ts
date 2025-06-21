@@ -30,12 +30,11 @@ const keyPointsPrompt = ai.definePrompt({
   name: 'keyPointsPrompt',
   input: {schema: GenerateKeyPointsInputSchema},
   output: {schema: GenerateKeyPointsOutputSchema},
-  prompt: `You are an expert academic assistant. Your task is to extract essential key points from the provided content, structured by topic.
+  prompt: `You are an expert academic assistant. Your task is to extract and expand upon essential key points from the provided content, structuring them by topic and adhering to a specific mark weightage.
 
   **Instructions:**
-  1.  **Identify Main Topics:** First, analyze the provided content and identify the main sections or topics. These are often indicated by headings like "MODULE I", "Introduction", or other clear titles.
-  2.  **Generate Points per Topic:** For each topic you identify, generate a list of key points.
-  3.  **Adhere to Mark Weightage:** The number and detail of the points must strictly follow this structure based on the user's requested mark weightage:
+  1.  **Analyze Content & Identify Topics:** First, analyze the provided content and identify the main sections or topics. These are often indicated by headings or can be inferred from the text.
+  2.  **Strictly Adhere to Mark Weightage:** The number and detail of the points you generate MUST strictly follow this structure based on the user's requested mark weightage. You MUST follow these rules exactly:
       *   **20 marks:** Exactly 15 comprehensive key points in total, distributed logically across the topics.
       *   **16 marks:** Exactly 12 detailed key points.
       *   **12 marks:** Exactly 10 key points.
@@ -43,27 +42,29 @@ const keyPointsPrompt = ai.definePrompt({
       *   **8 marks:** Exactly 7 key points.
       *   **4 marks:** Exactly 4 key points.
       *   **2 marks:** Exactly 2 concise key points.
-  4.  **Expand if Necessary:** If the provided content is too brief for the requested mark weightage, you MUST expand on the topics using your own knowledge to meet the required number of points. For example, if asked for a 20-mark answer (15 points) but the text is short, add relevant details, examples, or explanations to create a comprehensive answer.
-  5.  **Format Output as JSON:** Structure the entire output as a single JSON object. The keys of the object should be the topic headings you identified. The value for each key should be an array of strings, where each string is a key point.
+  3.  **Expand if Necessary:** If the provided content is too brief for the requested mark weightage, you MUST expand on the topics using your own knowledge to meet the required number of points. For example, if asked for a 20-mark answer (15 points) but the text is short, add relevant details, examples, or explanations to create a comprehensive answer. Do not simply state that the content is too short.
+  4.  **Format Output as JSON:** Structure the entire output as a single JSON object with a single top-level key called "keyPointsByTopic". The value of "keyPointsByTopic" must be an object where each key is a topic heading you identified, and the value for each key is an array of strings (the key points).
 
   **Example Output for a 12-mark request:**
   {
-    "MODULE I: CONCEPTS OF SUSTAINABLE DEVELOPMENT": [
-      "Sustainable Development aims to meet present needs without compromising the ability of future generations to meet their own.",
-      "Key linkages exist between environment and development, where environmental degradation can hamper economic progress.",
-      "Globalization introduces complex environmental challenges, including trans-boundary pollution and resource depletion.",
-      "Issues like population growth, poverty, and pollution are interconnected drivers of environmental stress."
-    ],
-    "MODULE II: SOCIO-ECONOMIC SYSTEMS": [
-      "Demographic dynamics, including population age structure and distribution, are crucial for sustainability planning.",
-      "Policies for sustainable development must integrate economic goals with social equity and environmental protection.",
-      "International trade can be a vehicle for sustainable development if managed with fair trade practices and environmental standards.",
-      "Sustainable agriculture and energy systems are fundamental pillars for long-term socio-economic stability."
-    ],
-    "MODULE III: FRAMEWORK FOR SUSTAINABILITY": [
-       "Sustainability indicators (e.g., Ecological Footprint) are essential tools for measuring progress towards sustainability goals.",
-       "Hurdles to sustainability include political inertia, lack of public awareness, and technological limitations."
-    ]
+    "keyPointsByTopic": {
+      "MODULE I: CONCEPTS OF SUSTAINABLE DEVELOPMENT": [
+        "Sustainable Development aims to meet present needs without compromising the ability of future generations to meet their own.",
+        "Key linkages exist between environment and development, where environmental degradation can hamper economic progress.",
+        "Globalization introduces complex environmental challenges, including trans-boundary pollution and resource depletion.",
+        "Issues like population growth, poverty, and pollution are interconnected drivers of environmental stress."
+      ],
+      "MODULE II: SOCIO-ECONOMIC SYSTEMS": [
+        "Demographic dynamics, including population age structure and distribution, are crucial for sustainability planning.",
+        "Policies for sustainable development must integrate economic goals with social equity and environmental protection.",
+        "International trade can be a vehicle for sustainable development if managed with fair trade practices and environmental standards.",
+        "Sustainable agriculture and energy systems are fundamental pillars for long-term socio-economic stability."
+      ],
+      "MODULE III: FRAMEWORK FOR SUSTAINABILITY": [
+        "Sustainability indicators (e.g., Ecological Footprint) are essential tools for measuring progress towards sustainability goals.",
+        "Hurdles to sustainability include political inertia, lack of public awareness, and technological limitations."
+      ]
+    }
   }
 
   **Content to Analyze:**
