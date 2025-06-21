@@ -92,7 +92,7 @@ export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGenerator
       <CardHeader>
         <CardTitle className="font-headline text-2xl flex items-center">
           <Sparkles className="mr-2 h-6 w-6 text-primary" />
-          Key Point Generator
+          Key Point Extractor
         </CardTitle>
         <CardDescription>
           Paste your full answer content and select the mark weightage. 
