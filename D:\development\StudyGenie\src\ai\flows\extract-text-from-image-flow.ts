@@ -42,7 +42,22 @@ const extractTextFromImageFlow = ai.defineFlow(
         ],
     });
 
-    // The 'text' field from the response contains the direct text output.
-    return text || "";
+    if (!text) {
+      return "";
+    }
+
+    // Defensively parse the output. The model might return raw text or a JSON string.
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed.extractedText === 'string') {
+        return parsed.extractedText;
+      }
+    } catch (e) {
+      // It's not a JSON string, so it's likely the plain text we wanted.
+      return text;
+    }
+    
+    // Fallback for malformed JSON or other unexpected structures.
+    return text;
   }
 );
