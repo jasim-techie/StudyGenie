@@ -75,5 +75,5 @@ export interface GenerateKeyPointsInput {
 }
 
 export interface GenerateKeyPointsOutput {
-  keyPoints: string[];
+  structuredKeyPoints: Record<string, string[]>;
 }

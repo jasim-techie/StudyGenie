@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Loader2, ListChecks, FileUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { GenerateKeyPointsOutput } from "@/lib/types";
 import { handleGenerateKeyPoints, handlePdfUploadForKeyPoints } from "@/app/actions";
 import { Input } from "@/components/ui/input";
 
@@ -20,7 +19,7 @@ export function KeyPointGenerator() {
   const [answerContent, setAnswerContent] = useState<string>("");
   const [markWeightage, setMarkWeightage] = useState<number>(MARK_WEIGHTAGES[0]);
   const [wordCount, setWordCount] = useState<number>(0);
-  const [generatedKeyPoints, setGeneratedKeyPoints] = useState<string[] | null>(null);
+  const [generatedKeyPoints, setGeneratedKeyPoints] = useState<Record<string, string[]> | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [pdfLoading, setPdfLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,11 +96,11 @@ export function KeyPointGenerator() {
       if (result.error) {
         throw new Error(result.error);
       }
-      if (result.keyPointsData?.keyPoints) {
-        setGeneratedKeyPoints(result.keyPointsData.keyPoints);
-        toast({ title: "Key Points Generated!", description: "Your key points are ready." });
+      if (result.keyPointsData?.structuredKeyPoints) {
+        setGeneratedKeyPoints(result.keyPointsData.structuredKeyPoints);
+        toast({ title: "Key Points Generated!", description: "Your structured key points are ready." });
       } else {
-        throw new Error("Key points not found in response.");
+        throw new Error("Structured key points not found in response.");
       }
     } catch (err) {
       console.error("Error generating key points:", err);
@@ -205,14 +204,21 @@ export function KeyPointGenerator() {
             <ListChecks className="mr-2 h-5 w-5 text-primary" />
             Generated Key Points ({markWeightage} Marks)
           </h3>
-          {generatedKeyPoints.length > 0 ? (
-            <ul className="space-y-2 list-disc list-inside bg-muted/50 p-4 rounded-md">
-              {generatedKeyPoints.map((point, index) => (
-                <li key={index} className="text-base text-foreground">
-                  {point}
-                </li>
+          {Object.keys(generatedKeyPoints).length > 0 ? (
+            <div className="space-y-4">
+              {Object.entries(generatedKeyPoints).map(([topic, points]) => (
+                <div key={topic}>
+                  <h4 className="font-semibold text-lg mb-2 text-foreground capitalize">{topic.toLowerCase().replace("module i", "Module 1 -").replace("module ii", "Module 2 -").replace("module iii", "Module 3 -").replace("module iv", "Module 4 -")}</h4>
+                  <ul className="space-y-2 list-disc list-inside bg-muted/50 p-4 rounded-md">
+                    {points.map((point, index) => (
+                      <li key={index} className="text-base text-foreground">
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
             <p className="text-muted-foreground">No specific key points were extracted. The AI might need more context or the content might be too brief for the selected marks.</p>
           )}

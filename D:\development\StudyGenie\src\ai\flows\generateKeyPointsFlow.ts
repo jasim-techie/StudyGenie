@@ -18,7 +18,7 @@ const GenerateKeyPointsInputSchema = z.object({
 export type GenerateKeyPointsInput = z.infer<typeof GenerateKeyPointsInputSchema>;
 
 const GenerateKeyPointsOutputSchema = z.object({
-  keyPoints: z.array(z.string()).describe('An array of essential key points extracted from the content, tailored to the mark weightage.'),
+  structuredKeyPoints: z.record(z.array(z.string())).describe('A JSON object where each key is a main topic or module from the source text, and the value is an array of key points for that topic. The total number of points should align with the mark weightage.'),
 });
 export type GenerateKeyPointsOutput = z.infer<typeof GenerateKeyPointsOutputSchema>;
 
@@ -30,26 +30,27 @@ const keyPointsPrompt = ai.definePrompt({
   name: 'keyPointsPrompt',
   input: {schema: GenerateKeyPointsInputSchema},
   output: {schema: GenerateKeyPointsOutputSchema},
-  prompt: `You are an expert academic assistant. Your primary task is to generate a structured list of key points from the provided "Answer Content". The number and depth of these points must strictly adhere to the specified "Mark Weightage".
+  prompt: `You are an expert academic assistant. Your task is to analyze the provided "Answer Content", identify the main topics or modules within it, and generate a structured list of key points for each topic. The total number of points generated across all topics must strictly adhere to the "Point Count Requirement" based on the specified "Mark Weightage".
 
 **CRITICAL INSTRUCTIONS:**
-1.  **Point Count Requirement:** Generate the EXACT number of key points specified below for the given mark weightage.
-    *   **2 marks:** Generate exactly 2 key points.
-    *   **4 marks:** Generate exactly 4 key points.
-    *   **8 marks:** Generate exactly 7 key points.
-    *   **10 marks:** Generate exactly 8 key points.
-    *   **12 marks:** Generate exactly 10 key points.
-    *   **16 marks:** Generate exactly 12 key points.
-    *   **20 marks:** Generate exactly 15 key points.
-2.  **Content Augmentation:** If the provided "Answer Content" is brief or lacks sufficient detail to meet the point count and depth required for the selected "Mark Weightage" (especially for 12, 16, and 20 marks), you MUST research the topic and add supplementary, relevant information to create a complete and comprehensive answer. Do not merely state that the content is insufficient. Expand upon the provided text with your own knowledge to meet the requirement.
-3.  **Output Format:** The output must be a JSON object with a single key "keyPoints", which is an array of strings.
+1.  **Identify Topics:** First, identify the main topics, sections, or modules from the "Answer Content". These will become the keys in your output JSON object.
+2.  **Point Count Requirement:** The TOTAL number of key points across all topics must be EXACTLY the number specified below for the given mark weightage.
+    *   **2 marks:** Generate exactly 2 key points in total.
+    *   **4 marks:** Generate exactly 4 key points in total.
+    *   **8 marks:** Generate exactly 7 key points in total.
+    *   **10 marks:** Generate exactly 8 key points in total.
+    *   **12 marks:** Generate exactly 10 key points in total.
+    *   **16 marks:** Generate exactly 12 key points in total.
+    *   **20 marks:** Generate exactly 15 key points in total.
+3.  **Content Augmentation:** If the provided "Answer Content" is brief or lacks sufficient detail to meet the point count required (especially for 12, 16, and 20 marks), you MUST research the topic and add supplementary, relevant information to create a complete and comprehensive answer. Do not merely state the content is insufficient. Expand upon the provided text with your own knowledge to meet the requirement.
+4.  **Output Format:** The output must be a JSON object with a single key "structuredKeyPoints". The value of "structuredKeyPoints" must be another JSON object where each key is a topic name (e.g., "MODULE I CONCEPTS OF SUSTAINABLE DEVELOPMENT") and each value is an array of strings representing the key points for that topic.
 
 **Answer Content:**
 {{{answerContent}}}
 
 **Mark Weightage:** {{markWeightage}} marks.
 
-Generate the key points based on these rules.
+Generate the structured key points based on these rules.
 `,
 });
 
@@ -69,7 +70,7 @@ const generateKeyPointsFlow = ai.defineFlow(
 
     const {output} = await keyPointsPrompt(input);
     
-    if (!output || !output.keyPoints) {
+    if (!output || !output.structuredKeyPoints) {
         console.error("Key point generation prompt did not return expected output structure.");
         throw new Error("Failed to generate key points. The AI model might have returned an unexpected format.");
     }
