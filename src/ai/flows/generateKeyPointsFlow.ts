@@ -17,10 +17,16 @@ const GenerateKeyPointsInputSchema = z.object({
 });
 export type GenerateKeyPointsInput = z.infer<typeof GenerateKeyPointsInputSchema>;
 
+// New, more stable output schema
 const GenerateKeyPointsOutputSchema = z.object({
-  keyPointsByTopic: z.record(z.array(z.string())).describe('An object where each key is a topic or module heading, and the value is an array of key points for that topic.'),
+  keyPoints: z.array(z.object({
+      topic: z.string().describe("The topic or module heading."),
+      points: z.array(z.string()).describe("An array of key points for this topic.")
+    })
+  ).describe("An array of topic objects, each containing a topic title and its corresponding key points.")
 });
 export type GenerateKeyPointsOutput = z.infer<typeof GenerateKeyPointsOutputSchema>;
+
 
 export async function generateKeyPoints(input: GenerateKeyPointsInput): Promise<GenerateKeyPointsOutput> {
   return generateKeyPointsFlow(input);
@@ -43,28 +49,37 @@ const keyPointsPrompt = ai.definePrompt({
       *   **4 marks:** Exactly 4 key points.
       *   **2 marks:** Exactly 2 concise key points.
   3.  **Expand if Necessary:** If the provided content is too brief for the requested mark weightage, you MUST expand on the topics using your own knowledge to meet the required number of points. For example, if asked for a 20-mark answer (15 points) but the text is short, add relevant details, examples, or explanations to create a comprehensive answer. Do not simply state that the content is too short.
-  4.  **Format Output as JSON:** Structure the entire output as a single JSON object with a single top-level key called "keyPointsByTopic". The value of "keyPointsByTopic" must be an object where each key is a topic heading you identified, and the value for each key is an array of strings (the key points).
+  4.  **Format Output as JSON:** Structure the entire output as a single JSON object. The object must contain a single top-level key called "keyPoints", which is an array of objects. Each object in the array must have a "topic" key (a string for the heading) and a "points" key (an array of strings for the key points).
 
   **Example Output for a 12-mark request:**
   {
-    "keyPointsByTopic": {
-      "MODULE I: CONCEPTS OF SUSTAINABLE DEVELOPMENT": [
-        "Sustainable Development aims to meet present needs without compromising the ability of future generations to meet their own.",
-        "Key linkages exist between environment and development, where environmental degradation can hamper economic progress.",
-        "Globalization introduces complex environmental challenges, including trans-boundary pollution and resource depletion.",
-        "Issues like population growth, poverty, and pollution are interconnected drivers of environmental stress."
-      ],
-      "MODULE II: SOCIO-ECONOMIC SYSTEMS": [
-        "Demographic dynamics, including population age structure and distribution, are crucial for sustainability planning.",
-        "Policies for sustainable development must integrate economic goals with social equity and environmental protection.",
-        "International trade can be a vehicle for sustainable development if managed with fair trade practices and environmental standards.",
-        "Sustainable agriculture and energy systems are fundamental pillars for long-term socio-economic stability."
-      ],
-      "MODULE III: FRAMEWORK FOR SUSTAINABILITY": [
-        "Sustainability indicators (e.g., Ecological Footprint) are essential tools for measuring progress towards sustainability goals.",
-        "Hurdles to sustainability include political inertia, lack of public awareness, and technological limitations."
-      ]
-    }
+    "keyPoints": [
+      {
+        "topic": "MODULE I: CONCEPTS OF SUSTAINABLE DEVELOPMENT",
+        "points": [
+          "Sustainable Development aims to meet present needs without compromising the ability of future generations to meet their own.",
+          "Key linkages exist between environment and development, where environmental degradation can hamper economic progress.",
+          "Globalization introduces complex environmental challenges, including trans-boundary pollution and resource depletion.",
+          "Issues like population growth, poverty, and pollution are interconnected drivers of environmental stress."
+        ]
+      },
+      {
+        "topic": "MODULE II: SOCIO-ECONOMIC SYSTEMS",
+        "points": [
+          "Demographic dynamics, including population age structure and distribution, are crucial for sustainability planning.",
+          "Policies for sustainable development must integrate economic goals with social equity and environmental protection.",
+          "International trade can be a vehicle for sustainable development if managed with fair trade practices and environmental standards.",
+          "Sustainable agriculture and energy systems are fundamental pillars for long-term socio-economic stability."
+        ]
+      },
+      {
+        "topic": "MODULE III: FRAMEWORK FOR SUSTAINABILITY",
+        "points": [
+          "Sustainability indicators (e.g., Ecological Footprint) are essential tools for measuring progress towards sustainability goals.",
+          "Hurdles to sustainability include political inertia, lack of public awareness, and technological limitations."
+        ]
+      }
+    ]
   }
 
   **Content to Analyze:**
@@ -90,7 +105,7 @@ const generateKeyPointsFlow = ai.defineFlow(
 
     const {output} = await keyPointsPrompt(input);
 
-    if (!output || !output.keyPointsByTopic) {
+    if (!output || !output.keyPoints) {
       console.error('Key point generation prompt did not return expected output structure.');
       throw new Error('Failed to generate key points. The AI model might have returned an unexpected format.');
     }

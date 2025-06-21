@@ -71,7 +71,7 @@ export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGenerator
       if (result.error) {
         throw new Error(result.error);
       }
-      if (result.keyPointsData?.keyPointsByTopic) {
+      if (result.keyPointsData?.keyPoints) {
         setGeneratedKeyPoints(result.keyPointsData);
         toast({ title: "Key Points Generated!", description: "Your key points are ready." });
       } else {
@@ -160,14 +160,14 @@ export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGenerator
             <ListChecks className="mr-2 h-5 w-5 text-primary" />
             Generated Key Points ({markWeightage} Marks)
           </h3>
-          {Object.keys(generatedKeyPoints.keyPointsByTopic).length > 0 ? (
+          {generatedKeyPoints.keyPoints.length > 0 ? (
             <div className="space-y-4">
-              {Object.entries(generatedKeyPoints.keyPointsByTopic).map(([topic, points]) => (
-                <div key={topic}>
+              {generatedKeyPoints.keyPoints.map(({ topic, points }, topicIndex) => (
+                <div key={topicIndex}>
                   <h4 className="font-semibold text-lg mb-2">{topic}</h4>
                   <ul className="space-y-2 list-disc list-inside bg-muted/50 p-4 rounded-md">
-                    {points.map((point, index) => (
-                      <li key={index} className="text-base text-foreground">
+                    {points.map((point, pointIndex) => (
+                      <li key={pointIndex} className="text-base text-foreground">
                         {point}
                       </li>
                     ))}

@@ -69,8 +69,12 @@ export interface GenerateKeyPointsInput {
 }
 
 export interface GenerateKeyPointsOutput {
-  keyPointsByTopic: Record<string, string[]>;
+  keyPoints: Array<{
+    topic: string;
+    points: string[];
+  }>;
 }
+
 
 // Types for Study Room
 export interface UploadedFile {
