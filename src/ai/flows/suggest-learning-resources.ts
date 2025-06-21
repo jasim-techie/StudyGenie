@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -11,7 +12,7 @@
  * @exports SuggestLearningResourcesOutput - The return type for the suggestLearningResources function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const SuggestLearningResourcesInputSchema = z.object({

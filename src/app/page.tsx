@@ -2,15 +2,15 @@
 "use client";
 
 import { useState, Suspense } from "react"; // Added Suspense
-import { Header } from "@/components/study-genie/Header";
-import { StudyPlanForm } from "@/components/study-genie/StudyPlanForm";
-import { TimetableDisplay } from "@/components/study-genie/TimetableDisplay";
-import { TimeAllocationChart } from "@/components/study-genie/TimeAllocationChart";
-import { ResourceSuggestions } from "@/components/study-genie/ResourceSuggestions";
-import { QuizGenerator } from "@/components/study-genie/QuizGenerator";
-import { QuizDisplay } from "@/components/study-genie/QuizDisplay";
-import { KeyPointGenerator } from "@/components/study-genie/KeyPointGenerator";
-import { PdfExportButton } from "@/components/study-genie/PdfExportButton";
+import { Header } from "@/components/layout/Header";
+import { StudyPlanForm } from "@/components/features/study-plan/StudyPlanForm";
+import { TimetableDisplay } from "@/components/features/study-plan/TimetableDisplay";
+import { TimeAllocationChart } from "@/components/features/study-plan/TimeAllocationChart";
+import { ResourceSuggestions } from "@/components/features/study-plan/ResourceSuggestions";
+import { QuizGenerator } from "@/components/features/quiz/QuizGenerator";
+import { QuizDisplay } from "@/components/features/quiz/QuizDisplay";
+import { KeyPointGenerator } from "@/components/features/key-points/KeyPointGenerator";
+import { PdfExportButton } from "@/components/shared/PdfExportButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";

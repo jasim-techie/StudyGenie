@@ -8,7 +8,7 @@
  * - ExtractTextFromPdfOutput - The return type for the extractTextFromPdf function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const ExtractTextFromPdfInputSchema = z.object({
@@ -36,41 +36,26 @@ const extractTextFromPdfFlow = ai.defineFlow(
     outputSchema: ExtractTextFromPdfOutputSchema,
   },
   async (input: ExtractTextFromPdfInput) => {
-    // Use ai.generate for potentially better handling of multimodal inputs like PDF data URIs.
-    // Gemini 1.5 Flash is generally good for document understanding.
     const {text} = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest', 
-        prompt: [
-            {media: {url: input.pdfDataUri}}, // Pass the PDF data URI as media
-            {text: "Extract all textual content from this PDF document. Prioritize extracting the main body text. Return only the extracted text. If no text is found, return an empty string."}
-        ],
-        output: { // Requesting structured output might not be necessary if we just want raw text
-             schema: ExtractTextFromPdfOutputSchema, 
-        },
-        config: {
-            // Optional: Adjust safety settings if needed
-            // safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE'}]
-        }
+      model: 'googleai/gemini-1.5-flash-latest',
+      prompt: [
+        {media: {url: input.pdfDataUri}},
+        {text: "Extract all textual content from this PDF document. Prioritize extracting the main body text. Respond with only the extracted text, not in JSON format. If no text is found, return an empty string."},
+      ],
     });
-    
-    // The 'text' field from the ai.generate response should contain the extracted text if the model processes it directly.
-    // If the output schema forces a structured response, 'text' might be part of an object.
-    // For simplicity, we'll assume 'text' contains the direct extraction or the model adheres to the schema implicitly.
-    // If the model returns a structured JSON like { "extractedText": "..." } in the `text` field due to schema hinting,
-    // we might need to parse it. However, usually for direct text extraction, the `text` field of the response is sufficient.
-    // Let's assume the model provides the text directly or the schema helps structure it such that `text` is the core content.
-    let resultText = text || "";
 
-    // Check if the response itself is a JSON string that needs parsing (if schema isn't auto-applied to response structure)
+    let resultText = text || '';
+
+    // A robust check in case the model *still* returns JSON despite the prompt.
     try {
-      const parsedOutput = ExtractTextFromPdfOutputSchema.parse(JSON.parse(resultText));
-      resultText = parsedOutput.extractedText;
+      const parsedOutput = JSON.parse(resultText);
+      if (parsedOutput && typeof parsedOutput.extractedText === 'string') {
+        resultText = parsedOutput.extractedText;
+      }
     } catch (e) {
-      // Not a JSON string, or doesn't match schema, assume resultText is already the extracted text
+      // Not JSON, use as is.
     }
 
-
-    return { extractedText: resultText };
+    return {extractedText: resultText};
   }
 );
-

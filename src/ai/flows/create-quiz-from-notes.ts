@@ -9,7 +9,7 @@
  * - CreateQuizFromNotesOutput - The return type for the createQuizFromNotes function (quiz JSON).
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'zod';
 
 // Input schema for the main exported function
@@ -111,4 +111,3 @@ const createQuizFromNotesFlow = ai.defineFlow(
     return output;
   }
 );
-

@@ -8,7 +8,7 @@
  * - ExtractTextFromImageOutput - The return type for the extractTextFromImage function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const ExtractTextFromImageInputSchema = z.object({
@@ -29,17 +29,6 @@ export async function extractTextFromImage(input: ExtractTextFromImageInput): Pr
   return extractTextFromImageFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'extractTextFromImagePrompt',
-  input: {schema: ExtractTextFromImageInputSchema},
-  output: {schema: ExtractTextFromImageOutputSchema},
-  model: 'googleai/gemini-2.0-flash-exp', // Ensure this model supports multimodal input for OCR
-  prompt: `{{media url=imageDataUri}} Extract all text visible in this image. Return only the extracted text as a single block. If no text is found, return an empty string.`,
-  config: {
-    responseModalities: ['TEXT'], // We only need text output
-  }
-});
-
 const extractTextFromImageFlow = ai.defineFlow(
   {
     name: 'extractTextFromImageFlow',
@@ -47,30 +36,31 @@ const extractTextFromImageFlow = ai.defineFlow(
     outputSchema: ExtractTextFromImageOutputSchema,
   },
   async (input: ExtractTextFromImageInput) => {
-    // Using ai.generate directly for multimodal input as per new guidelines
     const {text} = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // Or gemini-1.5-flash-latest
-        prompt: [
-            {media: {url: input.imageDataUri}},
-            {text: "Extract all text visible in this image. Return only the extracted text as a single block. If no text is found, return an empty string."}
-        ],
-        output: {
-            schema: ExtractTextFromImageOutputSchema,
-        },
-        config: {
-            // Safety settings can be adjusted if needed
-            // safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE'}]
-        }
+      model: 'googleai/gemini-1.5-flash-latest',
+      prompt: [
+        {media: {url: input.imageDataUri}},
+        {text: "Extract all text visible in this image. Respond with only the extracted text, not in JSON format. If no text is found, return an empty string."},
+      ],
+      config: {
+        responseModalities: ['TEXT'],
+      },
     });
-    // The model should directly return the structured output if 'output.schema' is provided to ai.generate
-    // However, if it returns a simple string in `text`, and we expect a structured output,
-    // we might need to parse it or adjust the prompt to ensure JSON output if the schema isn't auto-applied.
-    // For simple text extraction, `text` should suffice.
-    // Assuming the model respects the output schema or the text itself is the extractedText
-    
-    // If the output from ai.generate with schema is directly the object:
-    // const result = await ai.generate(...); return result.output();
-    // If it's plain text:
-    return { extractedText: text || "" };
+
+    let resultText = text || '';
+
+    // A robust check in case the model *still* returns JSON despite the prompt.
+    try {
+      // Try to parse it as JSON.
+      const parsedOutput = JSON.parse(resultText);
+      // If successful, and it has our expected key, use that value.
+      if (parsedOutput && typeof parsedOutput.extractedText === 'string') {
+        resultText = parsedOutput.extractedText;
+      }
+    } catch (e) {
+      // It's not a JSON string, so we can use it as is.
+    }
+
+    return {extractedText: resultText};
   }
 );

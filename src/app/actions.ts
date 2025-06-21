@@ -1,14 +1,14 @@
 
 "use server";
 
-import { generateStudySchedule, GenerateStudyScheduleInput } from "@/ai/flows/generate-study-schedule";
-import { suggestLearningResources, SuggestLearningResourcesInput } from "@/ai/flows/suggest-learning-resources";
-import { createQuizFromNotes, CreateQuizFromNotesInput } from "@/ai/flows/create-quiz-from-notes";
-import { generateTopicImage } from "@/ai/flows/generate-topic-image-flow"; // Removed GenerateTopicImageInput as it's not used directly by other actions
-import { extractTextFromImage, ExtractTextFromImageInput } from "@/ai/flows/extract-text-from-image-flow";
-import { generateKeyPoints as generateKeyPointsFlow, GenerateKeyPointsInput as GenerateKeyPointsFlowInput } from "@/ai/flows/generateKeyPointsFlow";
+import { generateStudySchedule, GenerateStudyScheduleInput } from "../ai/flows/generate-study-schedule";
+import { suggestLearningResources, SuggestLearningResourcesInput } from "../ai/flows/suggest-learning-resources";
+import { createQuizFromNotes, CreateQuizFromNotesInput } from "../ai/flows/create-quiz-from-notes";
+import { generateTopicImage } from "../ai/flows/generate-topic-image-flow";
+import { extractTextFromImage, ExtractTextFromImageInput } from "../ai/flows/extract-text-from-image-flow";
+import { generateKeyPoints as generateKeyPointsFlow, GenerateKeyPointsInput as GenerateKeyPointsFlowInput } from "../ai/flows/generateKeyPointsFlow";
 import type { GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, CreatedQuizOutput, SubjectEntry, GenerateKeyPointsOutput, StudyPlanFormValues } from "@/lib/types"; // Added StudyPlanFormValues
-import { extractTextFromPdf } from "@/ai/flows/extract-text-from-pdf-flow"; // Ensure this is imported if used by createQuizFromNotes
+import { extractTextFromPdf } from "../ai/flows/extract-text-from-pdf-flow";
 
 // Helper to convert File to Data URI
 async function fileToDataUri(file: File): Promise<string> {
@@ -29,6 +29,23 @@ export async function handleImageUploadForTopicExtraction(
     return { extractedText: null, error: error instanceof Error ? error.message : "Failed to extract text from image." };
   }
 }
+
+export async function handlePdfUploadForTextExtraction(
+    pdfDataUri: string
+): Promise<{ extractedText: string | null; error?: string }> {
+    try {
+        const result = await extractTextFromPdf({ pdfDataUri });
+        if (result.extractedText) {
+            return { extractedText: result.extractedText };
+        } else {
+            return { extractedText: null, error: "No text was extracted from the PDF." };
+        }
+    } catch (error) {
+        console.error("Error extracting text from PDF:", error);
+        return { extractedText: null, error: error instanceof Error ? error.message : "Failed to extract text from PDF." };
+    }
+}
+
 
 interface HandleGenerateStudyPlanData extends Omit<StudyPlanFormValues, 'supplementaryTopicImages' | 'examDate' | 'startDate'> {
   // Omit supplementaryTopicImages as it's removed
@@ -130,7 +147,6 @@ export async function handleCreateQuiz(
     return { quizData: null, error: errorMessage };
   }
 }
-
 
 export async function handleGenerateKeyPoints(
   answerContent: string,

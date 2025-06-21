@@ -8,7 +8,7 @@
  * - GenerateTopicImageOutput - The return type for the generateTopicImage function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const GenerateTopicImageInputSchema = z.object({
