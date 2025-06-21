@@ -1,12 +1,13 @@
+
 "use client";
 
 import { useState } from "react";
-import { Header } from "@/components/study-genie/Header";
-import { StudyPlanForm } from "@/components/study-genie/StudyPlanForm";
-import { TimetableDisplay } from "@/components/study-genie/TimetableDisplay";
-import { TimeAllocationChart } from "@/components/study-genie/TimeAllocationChart";
-import { ResourceSuggestions } from "@/components/study-genie/ResourceSuggestions";
-import { PdfExportButton } from "@/components/study-genie/PdfExportButton";
+import { Header } from "@/components/layout/Header";
+import { StudyPlanForm } from "@/components/features/study-plan/StudyPlanForm";
+import { TimetableDisplay } from "@/components/features/study-plan/TimetableDisplay";
+import { TimeAllocationChart } from "@/components/features/study-plan/TimeAllocationChart";
+import { ResourceSuggestions } from "@/components/features/study-plan/ResourceSuggestions";
+import { PdfExportButton } from "@/components/shared/PdfExportButton";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { handleGenerateStudyPlan } from "../actions";

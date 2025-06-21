@@ -1,7 +1,8 @@
+
 "use client";
 
 import { Suspense } from "react";
-import { Header } from "@/components/study-genie/Header";
+import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BookCopy, HelpCircleIcon, Sparkles, ArrowRight } from "lucide-react";
