@@ -17,7 +17,6 @@ const GenerateKeyPointsInputSchema = z.object({
 });
 export type GenerateKeyPointsInput = z.infer<typeof GenerateKeyPointsInputSchema>;
 
-// New, more stable output schema
 const GenerateKeyPointsOutputSchema = z.object({
   keyPoints: z.array(z.object({
       topic: z.string().describe("The topic or module heading."),
@@ -34,58 +33,61 @@ export async function generateKeyPoints(input: GenerateKeyPointsInput): Promise<
 
 const keyPointsPrompt = ai.definePrompt({
   name: 'keyPointsPrompt',
+  system: `You are an expert academic assistant. Your task is to extract and expand upon key points from content, structuring them according to a specific mark weightage. You must always respond in the specified JSON format, even if you need to create content to meet the requirements.`,
   input: {schema: GenerateKeyPointsInputSchema},
   output: {schema: GenerateKeyPointsOutputSchema},
-  prompt: `You are an expert academic assistant. Your task is to extract and expand upon essential key points from the provided content, structuring them by topic and adhering to a specific mark weightage.
+  prompt: `
+  **Content to Analyze:**
+  {{{answerContent}}}
 
-  **Instructions:**
-  1.  **Analyze Content & Identify Topics:** First, analyze the provided content and identify the main sections or topics. These are often indicated by headings or can be inferred from the text.
-  2.  **Strictly Adhere to Mark Weightage:** The number and detail of the points you generate MUST strictly follow this structure based on the user's requested mark weightage. You MUST follow these rules exactly:
-      *   **20 marks:** Exactly 15 comprehensive key points in total, distributed logically across the topics.
-      *   **16 marks:** Exactly 12 detailed key points.
-      *   **12 marks:** Exactly 10 key points.
-      *   **10 marks:** Exactly 8 key points.
-      *   **8 marks:** Exactly 7 key points.
-      *   **4 marks:** Exactly 4 key points.
-      *   **2 marks:** Exactly 2 concise key points.
-  3.  **Expand if Necessary:** If the provided content is too brief for the requested mark weightage, you MUST expand on the topics using your own knowledge to meet the required number of points. For example, if asked for a 20-mark answer (15 points) but the text is short, add relevant details, examples, or explanations to create a comprehensive answer. Do not simply state that the content is too short.
-  4.  **Format Output as JSON:** Structure the entire output as a single JSON object. The object must contain a single top-level key called "keyPoints", which is an array of objects. Each object in the array must have a "topic" key (a string for the heading) and a "points" key (an array of strings for the key points).
+  **Task:**
+  Analyze the content above and generate a structured list of key points suitable for a {{markWeightage}}-mark answer.
 
-  **Example Output for a 12-mark request:**
+  **Rules:**
+  1.  **Strict Point Count:** The total number of key points across all topics MUST match the mark weightage exactly as follows:
+      *   **20 marks:** 15 points total.
+      *   **16 marks:** 12 points total.
+      *   **12 marks:** 10 points total.
+      *   **10 marks:** 8 points total.
+      *   **8 marks:** 7 points total.
+      *   **4 marks:** 4 points total.
+      *   **2 marks:** 2 points total.
+  2.  **Expand Content:** If the provided text is too short or lacks detail, you MUST expand on the topics using your own knowledge to meet the required point count. DO NOT state that the content is insufficient.
+  3.  **Identify Topics:** Group the points under relevant topic headings. You should infer these headings from the content or create logical ones if none are obvious.
+  4.  **JSON Format:** The entire output must be a single, valid JSON object matching the required schema. It must have a root key "keyPoints" which is an array of objects. Each object must have a "topic" (string) and a "points" (array of strings).
+
+  **Example Output for a 12-mark request (10 points):**
   {
     "keyPoints": [
       {
-        "topic": "MODULE I: CONCEPTS OF SUSTAINABLE DEVELOPMENT",
+        "topic": "Topic One",
         "points": [
-          "Sustainable Development aims to meet present needs without compromising the ability of future generations to meet their own.",
-          "Key linkages exist between environment and development, where environmental degradation can hamper economic progress.",
-          "Globalization introduces complex environmental challenges, including trans-boundary pollution and resource depletion.",
-          "Issues like population growth, poverty, and pollution are interconnected drivers of environmental stress."
+          "Point A about topic one.",
+          "Point B about topic one.",
+          "Point C about topic one."
         ]
       },
       {
-        "topic": "MODULE II: SOCIO-ECONOMIC SYSTEMS",
+        "topic": "Topic Two",
         "points": [
-          "Demographic dynamics, including population age structure and distribution, are crucial for sustainability planning.",
-          "Policies for sustainable development must integrate economic goals with social equity and environmental protection.",
-          "International trade can be a vehicle for sustainable development if managed with fair trade practices and environmental standards.",
-          "Sustainable agriculture and energy systems are fundamental pillars for long-term socio-economic stability."
+          "Point D about topic two.",
+          "Point E about topic two.",
+          "Point F about topic two.",
+          "Point G about topic two."
         ]
       },
       {
-        "topic": "MODULE III: FRAMEWORK FOR SUSTAINABILITY",
+        "topic": "Topic Three",
         "points": [
-          "Sustainability indicators (e.g., Ecological Footprint) are essential tools for measuring progress towards sustainability goals.",
-          "Hurdles to sustainability include political inertia, lack of public awareness, and technological limitations."
+          "Point H about topic three.",
+          "Point I about topic three.",
+          "Point J about topic three."
         ]
       }
     ]
   }
 
-  **Content to Analyze:**
-  {{{answerContent}}}
-
-  **JSON Output for a {{markWeightage}}-mark answer:**
+  **JSON Output:**
 `,
 });
 

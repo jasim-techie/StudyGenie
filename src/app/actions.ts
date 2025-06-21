@@ -166,12 +166,13 @@ export async function handleGenerateKeyPoints(
   } catch (error) {
     const typedError = error as Error;
     console.error("Error generating key points:", typedError);
-    const errorMessage = typedError.message || "Failed to generate key points.";
+    let errorMessage = typedError.message || "Failed to generate key points.";
      if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
-      return { keyPointsData: null, error: "Key point generation failed due to API rate limits. Please try again later or with shorter content." };
-    }
-    if (errorMessage.toLowerCase().includes("token count exceeds") || errorMessage.toLowerCase().includes("input token count")) {
-      return { keyPointsData: null, error: "Your content is too long for the AI to process. Please shorten it and try again." };
+      errorMessage = "Key point generation failed due to API rate limits. Please try again later or with shorter content.";
+    } else if (errorMessage.toLowerCase().includes("token count exceeds") || errorMessage.toLowerCase().includes("input token count")) {
+      errorMessage = "Your content is too long for the AI to process. Please shorten it and try again.";
+    } else if (errorMessage.includes("400 Bad Request") || errorMessage.includes("response_schema")) {
+      errorMessage = "The AI failed to generate a response in the correct format. This can happen if the content is ambiguous or too short for the selected marks. Please try rephrasing or adding more detail to your content.";
     }
     return { keyPointsData: null, error: errorMessage };
   }
