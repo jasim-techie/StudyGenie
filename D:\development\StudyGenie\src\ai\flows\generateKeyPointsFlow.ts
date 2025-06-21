@@ -13,7 +13,7 @@ import {z} from 'zod';
 
 const GenerateKeyPointsInputSchema = z.object({
   answerContent: z.string().describe('The full answer content from notes or textbook.'),
-  markWeightage: z.number().describe('The desired mark weightage for the answer (e.g., 2, 4, 8, 12, 16, 20 marks).'),
+  markWeightage: z.number().describe('The desired mark weightage for the answer (e.g., 2, 4, 8, 10, 12, 16, 20 marks).'),
 });
 export type GenerateKeyPointsInput = z.infer<typeof GenerateKeyPointsInputSchema>;
 
@@ -30,18 +30,26 @@ const keyPointsPrompt = ai.definePrompt({
   name: 'keyPointsPrompt',
   input: {schema: GenerateKeyPointsInputSchema},
   output: {schema: GenerateKeyPointsOutputSchema},
-  prompt: `You are an expert academic assistant. Your task is to extract and summarize essential key points from the provided answer content. The level of detail and number of points must be appropriate for an answer that would receive {{markWeightage}} marks.
+  prompt: `You are an expert academic assistant. Your primary task is to generate a structured list of key points from the provided "Answer Content". The number and depth of these points must strictly adhere to the specified "Mark Weightage".
 
-- For low marks (e.g., 2-4), provide a few high-level, crucial points.
-- For medium marks (e.g., 8-12), provide more detailed points, including key definitions and concepts.
-- For high marks (e.g., 16-20), provide a comprehensive list of points. This should include main ideas, supporting details, examples, and any important sub-points. The response for a 20-mark question should be thorough and well-structured.
+**CRITICAL INSTRUCTIONS:**
+1.  **Point Count Requirement:** Generate the EXACT number of key points specified below for the given mark weightage.
+    *   **2 marks:** Generate exactly 2 key points.
+    *   **4 marks:** Generate exactly 4 key points.
+    *   **8 marks:** Generate exactly 7 key points.
+    *   **10 marks:** Generate exactly 8 key points.
+    *   **12 marks:** Generate exactly 10 key points.
+    *   **16 marks:** Generate exactly 12 key points.
+    *   **20 marks:** Generate exactly 15 key points.
+2.  **Content Augmentation:** If the provided "Answer Content" is brief or lacks sufficient detail to meet the point count and depth required for the selected "Mark Weightage" (especially for 12, 16, and 20 marks), you MUST research the topic and add supplementary, relevant information to create a complete and comprehensive answer. Do not merely state that the content is insufficient. Expand upon the provided text with your own knowledge to meet the requirement.
+3.  **Output Format:** The output must be a JSON object with a single key "keyPoints", which is an array of strings.
 
-Present the key points as a list of strings in the 'keyPoints' field of the JSON output.
-
-Answer Content:
+**Answer Content:**
 {{{answerContent}}}
 
-Key Points for a {{markWeightage}}-mark answer:
+**Mark Weightage:** {{markWeightage}} marks.
+
+Generate the key points based on these rules.
 `,
 });
 

@@ -14,7 +14,7 @@ import { handleGenerateKeyPoints, handlePdfUploadForKeyPoints } from "@/app/acti
 import { Input } from "@/components/ui/input";
 
 const MAX_WORDS_KEY_POINTS = 5000;
-const MARK_WEIGHTAGES = [2, 4, 8, 12, 16, 20];
+const MARK_WEIGHTAGES = [2, 4, 8, 10, 12, 16, 20];
 
 export function KeyPointGenerator() {
   const [answerContent, setAnswerContent] = useState<string>("");
@@ -90,7 +90,7 @@ export function KeyPointGenerator() {
     setIsLoading(true);
     setError(null);
     setGeneratedKeyPoints(null);
-    toast({ title: "Generating Key Points", description: "AI is extracting key points from your content..." });
+    toast({ title: "Generating Key Points", description: "AI is crafting your study points..." });
 
     try {
       const result = await handleGenerateKeyPoints(answerContent, markWeightage);
@@ -121,8 +121,8 @@ export function KeyPointGenerator() {
           Key Point Generator
         </CardTitle>
         <CardDescription>
-          Paste your full answer content, or upload a PDF to extract its text. 
-          The AI will find essential key points to aid your revision. Max {MAX_WORDS_KEY_POINTS} words.
+          Paste your answer content, or upload a PDF to extract its text. 
+          The AI will generate a comprehensive answer based on your desired marks. Max {MAX_WORDS_KEY_POINTS} words.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
