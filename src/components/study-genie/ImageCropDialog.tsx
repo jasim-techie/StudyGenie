@@ -88,7 +88,7 @@ export function ImageCropDialog({ isOpen, onClose, imageSrc, onCropComplete }: I
             Select the area of the image that contains the topics you want to extract.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-center items-center my-4 overflow-auto">
+        <div className="my-4 max-h-[60vh] overflow-auto rounded-md border p-2 bg-muted/20 flex justify-center items-center">
              <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
