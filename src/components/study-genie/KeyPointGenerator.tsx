@@ -88,7 +88,7 @@ export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGenerator
   };
 
   return (
-    <Card className="shadow-lg w-full max-w-4xl mx-auto">
+    <Card className="shadow-lg w-full">
       <CardHeader>
         <CardTitle className="font-headline text-2xl md:text-3xl flex items-center">
           <Sparkles className="mr-2 h-6 w-6 text-primary" />

@@ -98,14 +98,14 @@ function HomePageContent() {
             <TabsTrigger value="study-plan" className="text-base py-2.5 h-full">
               <BookCopy className="mr-2 h-5 w-5" /> Study Plan Generator
             </TabsTrigger>
-             <TabsTrigger value="study-room" id="study-room" className="text-base py-2.5 h-full">
-              <LayoutDashboard className="mr-2 h-5 w-5" /> Study Room
-            </TabsTrigger>
             <TabsTrigger value="quiz-maker" id="quiz-maker" className="text-base py-2.5 h-full">
               <HelpCircleIcon className="mr-2 h-5 w-5" /> Quiz Maker
             </TabsTrigger>
             <TabsTrigger value="key-points" id="key-points" className="text-base py-2.5 h-full">
               <Sparkles className="mr-2 h-5 w-5" /> Key Point Extractor
+            </TabsTrigger>
+            <TabsTrigger value="study-room" id="study-room" className="text-base py-2.5 h-full">
+              <LayoutDashboard className="mr-2 h-5 w-5" /> Study Room
             </TabsTrigger>
           </TabsList>
 
@@ -131,14 +131,8 @@ function HomePageContent() {
               </div>
           </TabsContent>
 
-           <TabsContent value="study-room">
-            <div className="space-y-8 max-w-5xl mx-auto">
-              <StudyRoom />
-            </div>
-          </TabsContent>
-
           <TabsContent value="quiz-maker">
-             <div className="space-y-8 max-w-3xl mx-auto">
+             <div className="space-y-8 max-w-4xl mx-auto">
                 {!quizJson ? (
                   <QuizGenerator 
                     onQuizGenerated={onQuizGenerated} 
@@ -156,10 +150,17 @@ function HomePageContent() {
           </TabsContent>
 
           <TabsContent value="key-points">
-            <div className="space-y-8 max-w-3xl mx-auto">
+            <div className="space-y-8 max-w-4xl mx-auto">
               <KeyPointGenerator generateKeyPointsAction={handleGenerateKeyPoints} />
             </div>
           </TabsContent>
+
+          <TabsContent value="study-room">
+            <div className="space-y-8 max-w-6xl mx-auto">
+              <StudyRoom />
+            </div>
+          </TabsContent>
+
         </Tabs>
       </main>
       <footer className="py-6 text-center text-muted-foreground border-t">

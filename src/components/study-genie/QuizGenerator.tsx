@@ -79,7 +79,7 @@ export function QuizGenerator({ onQuizGenerated, isLoading, setIsLoading, create
   };
 
   return (
-    <Card className="shadow-lg w-full max-w-2xl mx-auto">
+    <Card className="shadow-lg w-full">
       <CardHeader>
         <CardTitle className="font-headline text-2xl flex items-center">
           <FileQuestion className="mr-2 h-6 w-6 text-primary" />
@@ -98,8 +98,8 @@ export function QuizGenerator({ onQuizGenerated, isLoading, setIsLoading, create
             value={notesText}
             onChange={handleTextChange}
             placeholder="Paste your notes here..."
-            rows={15}
-            className="mt-2 text-base min-h-[200px] resize-y"
+            rows={18}
+            className="mt-2 text-base min-h-[250px] resize-y"
           />
           <div className="mt-2 flex justify-between items-center text-sm">
             <p className={wordCount > MAX_WORDS ? "text-destructive" : "text-muted-foreground"}>
@@ -113,7 +113,7 @@ export function QuizGenerator({ onQuizGenerated, isLoading, setIsLoading, create
         <Button 
           onClick={handleSubmit} 
           disabled={isLoading || wordCount === 0 || wordCount > MAX_WORDS} 
-          className="w-full text-base py-3"
+          className="w-full sm:w-auto text-base py-3 px-6"
         >
           {isLoading ? (
             <>
