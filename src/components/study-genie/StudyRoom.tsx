@@ -15,8 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/context/AuthContext";
 import { db, storage } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import Link from "next/link";
 
 const MAX_FILENAME_LENGTH = 30;
 
@@ -36,37 +37,45 @@ export function StudyRoom() {
       return;
     };
 
-    const subjectsColRef = collection(db, `users/${user.uid}/subjects`);
-    const unsubscribe = onSnapshot(subjectsColRef, async (subjectsSnapshot) => {
-        const subjectsData: StudyRoomSubject[] = [];
-        for (const subjectDoc of subjectsSnapshot.docs) {
-            const subject = { id: subjectDoc.id, ...subjectDoc.data() } as StudyRoomSubject;
-            
-            // Fetch files subcollection for each subject
-            const filesColRef = collection(db, `users/${user.uid}/subjects/${subjectDoc.id}/files`);
-            const filesSnapshot = await onSnapshot(filesColRef, (filesQuerySnapshot) => {
-              const filesData = filesQuerySnapshot.docs.map(fileDoc => ({ id: fileDoc.id, ...fileDoc.data() } as UploadedFile));
-              
-              // Find the subject in the state and update its files
-              setSubjects(currentSubjects => {
-                return currentSubjects.map(s => {
-                  if (s.id === subject.id) {
-                    return { ...s, files: filesData };
-                  }
-                  return s;
-                });
-              });
-            });
-            // We are not storing the unsubscribe for files, which is a memory leak.
-            // A more robust solution would manage these listeners.
-            
-            subjectsData.push({ ...subject, files: subject.files || [] });
+    const subjectsQuery = query(collection(db, `users/${user.uid}/subjects`), orderBy("createdAt", "asc"));
+    let fileUnsubscribers: (() => void)[] = [];
+
+    const subjectsUnsubscribe = onSnapshot(subjectsQuery, (subjectsSnapshot) => {
+        // Unsubscribe from all previous file listeners to prevent memory leaks
+        fileUnsubscribers.forEach(unsub => unsub());
+        fileUnsubscribers = [];
+        
+        const newSubjects: StudyRoomSubject[] = [];
+        if (subjectsSnapshot.empty) {
+            setSubjects([]);
+            setIsLoading(false);
+            return;
         }
-        setSubjects(subjectsData);
+
+        subjectsSnapshot.forEach((subjectDoc) => {
+            const subjectData = { id: subjectDoc.id, ...subjectDoc.data(), files: [] } as StudyRoomSubject;
+            newSubjects.push(subjectData);
+
+            const filesQuery = query(collection(db, `users/${user.uid}/subjects/${subjectDoc.id}/files`), orderBy("uploadedAt", "asc"));
+            const filesUnsubscribe = onSnapshot(filesQuery, (filesSnapshot) => {
+                const filesData = filesSnapshot.docs.map(fileDoc => ({ id: fileDoc.id, ...fileDoc.data() } as UploadedFile));
+                setSubjects(currentSubjects => {
+                    const subjectExists = currentSubjects.some(s => s.id === subjectDoc.id);
+                    if (!subjectExists) return currentSubjects; // Avoid updates if subject was removed
+                    return currentSubjects.map(s => s.id === subjectDoc.id ? { ...s, files: filesData } : s);
+                });
+            });
+            fileUnsubscribers.push(filesUnsubscribe);
+        });
+
+        setSubjects(newSubjects);
         setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+        subjectsUnsubscribe();
+        fileUnsubscribers.forEach(unsub => unsub());
+    };
   }, [user]);
 
 
@@ -80,7 +89,6 @@ export function StudyRoom() {
       await addDoc(subjectsColRef, {
         name: newSubjectName,
         createdAt: serverTimestamp(),
-        files: [],
       });
       setNewSubjectName("");
       toast({ title: "Subject Added", description: `"${newSubjectName}" has been added.`});
@@ -95,8 +103,10 @@ export function StudyRoom() {
     if (!confirm(`Are you sure you want to delete the subject "${subjectName}" and all its files? This cannot be undone.`)) return;
 
     try {
+      // Note: This only deletes the Firestore record. Deleting all files in Storage
+      // should ideally be handled by a Cloud Function triggered on document deletion
+      // to ensure atomicity and prevent orphaned files.
       const subjectDocRef = doc(db, `users/${user.uid}/subjects`, subjectId);
-      // Ideally, we'd also delete all files in Storage within a Cloud Function trigger
       await deleteDoc(subjectDocRef);
       toast({ title: "Subject Removed", description: `"${subjectName}" has been removed.`});
     } catch (error) {
@@ -116,7 +126,7 @@ export function StudyRoom() {
 
     setIsUploading(prev => ({ ...prev, [subjectId]: true }));
 
-    const storageRef = ref(storage, `users/${user.uid}/subjects/${subjectName}/${file.name}`);
+    const storageRef = ref(storage, `users/${user.uid}/subjects/${subjectName}/${file.name}-${Date.now()}`);
 
     try {
       const uploadResult = await uploadBytes(storageRef, file);
@@ -170,7 +180,7 @@ export function StudyRoom() {
     if (type === 'pdf') return <FileText className="h-5 w-5 text-red-600" />;
     if (['ppt', 'pptx'].includes(type || '')) return <FileText className="h-5 w-5 text-orange-500" />;
     if (['doc', 'docx'].includes(type || '')) return <FileText className="h-5 w-5 text-blue-600" />;
-    if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(type || '')) return <FileText className="h-5 w-5 text-green-600" />;
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(type || '')) return <FileText className="h-5 w-5 text-green-600" />; // Could use ImageIcon
     if (type === 'txt') return <FileText className="h-5 w-5 text-gray-700" />;
     return <FileText className="h-5 w-5 text-muted-foreground" />;
   };
@@ -285,7 +295,7 @@ export function StudyRoom() {
                     </Button>
                     <Input
                         type="file"
-                        ref={el => fileInputRefs.current[subject.id] = el}
+                        ref={el => { if (el) fileInputRefs.current[subject.id] = el }}
                         className="hidden"
                         onChange={(e) => handleFileUpload(subject.id, subject.name, e)}
                         accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.svg"
@@ -315,8 +325,8 @@ export function StudyRoom() {
                            <div className="flex items-center space-x-1.5">
                              <Checkbox
                                 id={`studied-${subject.id}-${file.id}`}
-                                checked={file.isStudied}
-                                onCheckedChange={() => toggleFileStudied(subject.id, file.id, file.isStudied)}
+                                checked={!!file.isStudied}
+                                onCheckedChange={() => toggleFileStudied(subject.id, file.id, !!file.isStudied)}
                                 className="h-5 w-5"
                               />
                               <Label htmlFor={`studied-${subject.id}-${file.id}`} className="text-xs cursor-pointer select-none">
@@ -340,3 +350,5 @@ export function StudyRoom() {
     </div>
   );
 }
+
+    

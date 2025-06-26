@@ -25,41 +25,72 @@ const quickLinks = [
   { name: "Key Point Extractor", href: "/?tab=key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
 
+type QuestionWithStatus = CrosscheckQuestion & { answered: boolean };
+
 function StudentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const { user, userProfile } = useAuth();
   
-  const [questions, setQuestions] = useState<CrosscheckQuestion[]>([]);
-  const [activeQuestion, setActiveQuestion] = useState<CrosscheckQuestion | null>(null);
+  const [questions, setQuestions] = useState<QuestionWithStatus[]>([]);
+  const [activeQuestion, setActiveQuestion] = useState<QuestionWithStatus | null>(null);
   const [answer, setAnswer] = useState("");
   const [isAnswering, setIsAnswering] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (userProfile && userProfile.role === 'student' && userProfile.familyCode) {
-      const q = query(
+    if (userProfile?.role !== 'student' || !userProfile.familyCode || !user?.uid) {
+        setIsLoading(false);
+        return;
+    }
+    
+    const studentUid = user.uid;
+    const q = query(
         collection(db, `crosscheck/${userProfile.familyCode}/questions`),
         orderBy("askedAt", "desc")
-      );
+    );
       
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const fetchedQuestions: CrosscheckQuestion[] = [];
-        querySnapshot.forEach((doc) => {
-          fetchedQuestions.push({ id: doc.id, ...doc.data() } as CrosscheckQuestion);
-        });
-        
-        // This is a simplified check. A real app would check against the user's answers.
-        const updatedQuestions = fetchedQuestions.map(q => ({...q, answered: false})); // Placeholder
-        setQuestions(updatedQuestions);
-        setIsLoading(false);
-      });
+    let answerUnsubscribers: Record<string, () => void> = {};
 
-      return () => unsubscribe();
-    } else {
+    const questionsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+        const activeQuestionIds = new Set(querySnapshot.docs.map(d => d.id));
+        Object.keys(answerUnsubscribers).forEach(qid => {
+            if (!activeQuestionIds.has(qid)) {
+                answerUnsubscribers[qid]();
+                delete answerUnsubscribers[qid];
+            }
+        });
+
+        const fetchedQuestions = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            answered: false, // Default value, will be updated by answer listener
+            ...doc.data()
+        } as QuestionWithStatus));
+
+        setQuestions(fetchedQuestions);
         setIsLoading(false);
-    }
-  }, [userProfile]);
+
+        fetchedQuestions.forEach((question) => {
+            if (answerUnsubscribers[question.id]) return;
+
+            const answerDocRef = doc(db, `crosscheck/${userProfile.familyCode}/questions/${question.id}/answers`, studentUid);
+            const answerUnsubscribe = onSnapshot(answerDocRef, (answerDoc) => {
+                const isAnswered = answerDoc.exists();
+                setQuestions(currentQuestions => 
+                    currentQuestions.map(q => 
+                        q.id === question.id ? { ...q, answered: isAnswered } : q
+                    )
+                );
+            });
+            answerUnsubscribers[question.id] = answerUnsubscribe;
+        });
+    });
+
+    return () => {
+        questionsUnsubscribe();
+        Object.values(answerUnsubscribers).forEach(unsub => unsub());
+    };
+  }, [userProfile, user]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -70,7 +101,7 @@ function StudentPageContent() {
     router.push('/login');
   };
 
-  const handleOpenAnswerDialog = (question: CrosscheckQuestion) => {
+  const handleOpenAnswerDialog = (question: QuestionWithStatus) => {
     setActiveQuestion(question);
     setAnswer("");
   };
@@ -87,6 +118,10 @@ function StudentPageContent() {
         studentName: userProfile.name,
         answeredAt: serverTimestamp(),
       });
+      
+      // Also update the question doc to indicate it's answered to trigger parent UI maybe
+      // For now, parent UI just checks for existence of answer doc.
+
       toast({ title: "Answer Submitted!", description: "Your answer has been sent to your parent." });
       setActiveQuestion(null);
       setAnswer("");
@@ -256,3 +291,5 @@ export default function StudentDashboardPage() {
     </Suspense>
   );
 }
+
+    
