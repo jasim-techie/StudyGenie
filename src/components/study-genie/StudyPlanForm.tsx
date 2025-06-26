@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageIcon, Loader2, PlusCircle, Trash2, Crop } from "lucide-react";
+import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageIcon, Loader2, PlusCircle, Trash2, Crop, Check, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -105,32 +105,45 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
   };
 
   const handleCropComplete = async (croppedImageDataUri: string) => {
-    if (subjectIndexToUpdate === null) return;
+    if (subjectIndexToUpdate === null) {
+      toast({ title: "Error", description: "Could not determine which subject to update. Please try again.", variant: "destructive"});
+      return;
+    }
 
     const subjectId = fields[subjectIndexToUpdate].id;
     setOcrLoadingStates(prev => ({ ...prev, [subjectId]: true }));
     form.setValue(`subjects.${subjectIndexToUpdate}.ocrTextPreview`, "Extracting text from cropped image...");
 
-    const result = await handleImageUploadForTopicExtraction(croppedImageDataUri);
-    setOcrLoadingStates(prev => ({ ...prev, [subjectId]: false }));
-
-    if (result.error || !result.extractedTopics) {
-      toast({ title: "OCR Error", description: result.error || "Failed to extract text.", variant: "destructive" });
-      form.setValue(`subjects.${subjectIndexToUpdate}.ocrTextPreview`, `Error: ${result.error || "Unknown error"}`);
-    } else {
-      const { newLineSeparatedTopics, rawText } = result.extractedTopics;
-      const currentTopics = form.getValues(`subjects.${subjectIndexToUpdate}.topics`);
-      const newTopics = currentTopics ? `${currentTopics}\n${newLineSeparatedTopics}` : newLineSeparatedTopics;
+    try {
+      const result = await handleImageUploadForTopicExtraction(croppedImageDataUri);
       
-      form.setValue(`subjects.${subjectIndexToUpdate}.topics`, newTopics, { shouldValidate: true });
-      form.setValue(`subjects.${subjectIndexToUpdate}.ocrTextPreview`, rawText || "No text extracted.");
-      toast({ title: "Text Extracted & Appended", description: "Topics have been added from your image." });
+      if (result.error || !result.extractedTopics) {
+        const errorMessage = result.error || "Failed to extract text from image. The AI may not have found any text.";
+        toast({ title: "OCR Error", description: errorMessage, variant: "destructive" });
+        form.setValue(`subjects.${subjectIndexToUpdate}.ocrTextPreview`, `Error: ${errorMessage}`);
+      } else {
+        const { newLineSeparatedTopics, rawText } = result.extractedTopics;
+        const currentTopics = form.getValues(`subjects.${subjectIndexToUpdate}.topics`);
+        const newTopics = currentTopics && currentTopics.trim() !== "" 
+            ? `${currentTopics}\n${newLineSeparatedTopics}` 
+            : newLineSeparatedTopics;
+        
+        form.setValue(`subjects.${subjectIndexToUpdate}.topics`, newTopics, { shouldValidate: true });
+        form.setValue(`subjects.${subjectIndexToUpdate}.ocrTextPreview`, rawText || "No text extracted from the cropped area.");
+        toast({ title: "Text Extracted & Appended", description: "Topics have been added from your image." });
+      }
+    } catch (err) {
+      console.error("An unexpected error occurred during crop/OCR process:", err);
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+      toast({ title: "Processing Error", description: errorMessage, variant: "destructive" });
+      form.setValue(`subjects.${subjectIndexToUpdate}.ocrTextPreview`, `Fatal Error: ${errorMessage}`);
+    } finally {
+      setOcrLoadingStates(prev => ({ ...prev, [subjectId]: false }));
+      // Reset crop dialog state
+      setIsCropDialogOpen(false);
+      setImageToCrop(null);
+      setSubjectIndexToUpdate(null);
     }
-
-    // Reset crop dialog state
-    setIsCropDialogOpen(false);
-    setImageToCrop(null);
-    setSubjectIndexToUpdate(null);
   };
   
   const triggerImageUpload = (subjectId: string) => {
@@ -306,6 +319,7 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel className="flex items-center text-base"><CalendarDays className="mr-2 h-5 w-5 text-primary" />Exam Date</FormLabel>
+
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
