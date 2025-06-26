@@ -13,9 +13,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 
 const quickLinks = [
-  { name: "New Study Plan", href: "/study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
-  { name: "Quiz Maker", href: "/quiz-maker", icon: HelpCircleIcon, description: "Test your knowledge from notes." },
-  { name: "Key Point Extractor", href: "/key-points", icon: Sparkles, description: "Extract key points from answers." },
+  { name: "New Study Plan", href: "/?tab=study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
+  { name: "Quiz Maker", href: "/?tab=quiz-maker", icon: HelpCircleIcon, description: "Test your knowledge from notes." },
+  { name: "Key Point Extractor", href: "/?tab=key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
 
 function StudentPageContent() {
@@ -52,17 +52,17 @@ function StudentPageContent() {
               <p className="text-xs lg:text-sm text-muted-foreground">Student Portal</p>
             </div>
             <nav className="space-y-1.5">
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+              <Button variant="secondary" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href={`/dashboard/student?name=${encodeURIComponent(studentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/study-plan"><BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI</Link>
+                <Link href="/?tab=study-plan"><BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/quiz-maker"><HelpCircleIcon className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Quiz Maker</Link>
+                <Link href="/?tab=quiz-maker"><HelpCircleIcon className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Quiz Maker</Link>
               </Button>
                <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/key-points"><Sparkles className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Key Points</Link>
+                <Link href="/?tab=key-points"><Sparkles className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Key Points</Link>
               </Button>
             </nav>
           </div>
@@ -87,7 +87,7 @@ function StudentPageContent() {
           </div>
 
           <section className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access to AI Tools</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {quickLinks.map(link => (
                 <Card key={link.name} className="hover:shadow-lg transition-shadow duration-200 ease-in-out border-border/70 bg-card/80 backdrop-blur-sm">
@@ -103,15 +103,6 @@ function StudentPageContent() {
                     </CardContent>
                 </Card>
                 ))}
-                <Card className="hover:shadow-lg transition-shadow duration-200 ease-in-out bg-primary/5 border-primary/20 col-span-1 sm:col-span-2 lg:col-span-1">
-                    <CardHeader className="pb-3">
-                    <LayoutDashboard className="h-7 w-7 sm:h-8 sm:w-8 text-primary mb-1.5" />
-                    <CardTitle className="text-lg sm:text-xl">Your Progress</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Track your completed topics and quiz scores here. (Feature Coming Soon)</p>
-                    </CardContent>
-                </Card>
             </div>
           </section>
           

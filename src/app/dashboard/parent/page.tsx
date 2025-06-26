@@ -15,10 +15,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 const mockStudentName = "Your Child"; 
 
 const mockSubjectsProgress = [
-  { id: "1", name: "Mathematics", topicsCovered: 8, topicsTotal: 12, lastStudiedFile: "Chapter 3 Notes.pdf", quizAttempts: 3, avgScore: 75 },
-  { id: "2", name: "Physics", topicsCovered: 5, topicsTotal: 10, lastStudiedFile: "Newton's Laws.ppt", quizAttempts: 1, avgScore: 90 },
-  { id: "3", name: "Chemistry", topicsCovered: 10, topicsTotal: 10, lastStudiedFile: "Periodic Table.docx", quizAttempts: 5, avgScore: 82 },
-  { id: "4", name: "Biology", topicsCovered: 2, topicsTotal: 15, lastStudiedFile: "Cell Structure.pdf", quizAttempts: 0, avgScore: 0 },
+  { id: "1", name: "Mathematics", filesStudied: 8, filesTotal: 12, lastStudiedFile: "Chapter 3 Notes.pdf", quizAttempts: 3, avgScore: 75 },
+  { id: "2", name: "Physics", filesStudied: 5, filesTotal: 10, lastStudiedFile: "Newton's Laws.ppt", quizAttempts: 1, avgScore: 90 },
+  { id: "3", name: "Chemistry", filesStudied: 10, filesTotal: 10, lastStudiedFile: "Periodic Table.docx", quizAttempts: 5, avgScore: 82 },
+  { id: "4", name: "Biology", filesStudied: 2, filesTotal: 15, lastStudiedFile: "Cell Structure.pdf", quizAttempts: 0, avgScore: 0 },
 ];
 
 function truncateFileName(name: string, maxLength: number = 20): string {
@@ -115,7 +115,7 @@ function ParentPageContent() {
                 Subject Progress
               </CardTitle>
               <CardDescription className="text-sm sm:text-base">
-                View topics covered, quiz performance, and last accessed materials for {studentName}.
+                View files studied, quiz performance, and last accessed materials for {studentName}.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
@@ -128,15 +128,15 @@ function ParentPageContent() {
                     <CardHeader className="pb-2 sm:pb-3">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg sm:text-xl font-semibold">{subject.name}</CardTitle>
-                        <Badge variant={subject.topicsCovered === subject.topicsTotal ? "default" : "secondary"} className={`${subject.topicsCovered === subject.topicsTotal ? 'bg-green-600 text-white' : 'bg-blue-500 text-white'} text-xs sm:text-sm shadow-sm`}>
-                          {subject.topicsCovered === subject.topicsTotal && <CheckCircle2 className="inline mr-1.5 h-4 w-4"/>}
-                          {subject.topicsCovered} / {subject.topicsTotal} Topics
+                        <Badge variant={subject.filesStudied === subject.filesTotal ? "default" : "secondary"} className={`${subject.filesStudied === subject.filesTotal ? 'bg-green-600 text-white' : 'bg-blue-500 text-white'} text-xs sm:text-sm shadow-sm`}>
+                          {subject.filesStudied === subject.filesTotal && <CheckCircle2 className="inline mr-1.5 h-4 w-4"/>}
+                          {subject.filesStudied} / {subject.filesTotal} Files Studied
                         </Badge>
                       </div>
                        <Progress 
-                            value={(subject.topicsCovered / subject.topicsTotal) * 100} 
+                            value={(subject.filesStudied / subject.filesTotal) * 100} 
                             className="h-2 sm:h-2.5 mt-2" 
-                            indicatorClassName={subject.topicsCovered === subject.topicsTotal ? "bg-green-500" : "bg-primary"}
+                            indicatorClassName={subject.filesStudied === subject.filesTotal ? "bg-green-500" : "bg-primary"}
                         />
                     </CardHeader>
                     <CardContent className="text-xs sm:text-sm space-y-1.5">
