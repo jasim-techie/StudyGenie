@@ -106,7 +106,9 @@ export default function LoginPage() {
     } catch (error: any) {
         console.error("Sign up error:", error);
         let errorMessage = "An unknown error occurred during sign up.";
-        if ((error.code && String(error.code).includes('api-key')) || (error.message && String(error.message).includes('api-key'))) {
+        if (error.code === 'auth/configuration-not-found') {
+             errorMessage = "Firebase configuration is missing or invalid. Please check your .env.local file and restart the development server.";
+        } else if ((error.code && String(error.code).includes('api-key')) || (error.message && String(error.message).includes('api-key'))) {
           errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
         } else if (error.code === 'auth/email-already-in-use') {
             errorMessage = "This email address is already in use.";
@@ -142,7 +144,9 @@ export default function LoginPage() {
     } catch (error: any) {
         console.error("Login error:", error);
         let errorMessage = "An unknown error occurred.";
-        if ((error.code && String(error.code).includes('api-key')) || (error.message && String(error.message).includes('api-key'))) {
+        if (error.code === 'auth/configuration-not-found') {
+          errorMessage = "Firebase configuration is missing or invalid. Please check your .env.local file and restart the development server.";
+        } else if ((error.code && String(error.code).includes('api-key')) || (error.message && String(error.message).includes('api-key'))) {
           errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
         } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
             errorMessage = "Invalid email or password. Please try again.";
