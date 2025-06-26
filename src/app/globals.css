@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -74,5 +75,7 @@
   }
   .ReactCrop__image {
     max-height: 70vh;
+    max-width: 100%;
+    object-fit: contain;
   }
 }

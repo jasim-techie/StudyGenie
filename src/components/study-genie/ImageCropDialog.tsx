@@ -16,9 +16,9 @@ interface ImageCropDialogProps {
   onCropComplete: (croppedImageDataUrl: string) => void;
 }
 
-function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
+function centerAspectCrop(mediaWidth: number, mediaHeight: number) {
     return centerCrop(
-        makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
+        makeAspectCrop({ unit: '%', width: 90 }, mediaWidth / mediaHeight, mediaWidth, mediaHeight),
         mediaWidth,
         mediaHeight
     );
@@ -32,7 +32,7 @@ export function ImageCropDialog({ isOpen, onClose, imageSrc, onCropComplete }: I
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, 16 / 9));
+    setCrop(centerAspectCrop(width, height));
   }
 
   const handleCrop = () => {
@@ -81,26 +81,26 @@ export function ImageCropDialog({ isOpen, onClose, imageSrc, onCropComplete }: I
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="w-full max-w-sm sm:max-w-lg md:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Crop Image</DialogTitle>
           <DialogDescription>
             Select the area of the image that contains the topics you want to extract.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-center items-center my-4">
+        <div className="flex justify-center items-center my-4 overflow-auto">
              <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
                 onComplete={(c) => setCompletedCrop(c)}
-                aspect={undefined} // Free crop
+                aspect={undefined} // Free crop, no fixed aspect ratio
              >
                 <img
                     ref={imgRef}
                     alt="Crop preview"
                     src={imageSrc}
                     onLoad={onImageLoad}
-                    className="ReactCrop__image" // From globals.css
+                    className="ReactCrop__image" // CSS for this is in globals.css
                 />
             </ReactCrop>
         </div>
