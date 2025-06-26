@@ -5,7 +5,7 @@ import { generateStudySchedule, GenerateStudyScheduleInput } from "../ai/flows/g
 import { suggestLearningResources, SuggestLearningResourcesInput } from "../ai/flows/suggest-learning-resources";
 import { createQuizFromNotes, CreateQuizFromNotesInput } from "../ai/flows/create-quiz-from-notes";
 import { generateTopicImage } from "../ai/flows/generate-topic-image-flow";
-import { extractTextFromImage, ExtractTextFromImageInput } from "../ai/flows/extract-text-from-image-flow";
+import { extractTextFromImage, ExtractTextFromImageInput, type ExtractTextFromImageOutput } from "../ai/flows/extract-text-from-image-flow";
 import { generateKeyPoints as generateKeyPointsFlow, GenerateKeyPointsInput as GenerateKeyPointsFlowInput } from "../ai/flows/generateKeyPointsFlow";
 import type { GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, CreatedQuizOutput, SubjectEntry, GenerateKeyPointsOutput, StudyPlanFormValues } from "@/lib/types"; // Added StudyPlanFormValues
 import { extractTextFromPdf } from "../ai/flows/extract-text-from-pdf-flow";
@@ -19,14 +19,14 @@ async function fileToDataUri(file: File): Promise<string> {
 
 export async function handleImageUploadForTopicExtraction(
   imageDataUri: string
-): Promise<{ extractedText: string | null; error?: string }> {
+): Promise<{ extractedTopics: ExtractTextFromImageOutput | null; error?: string }> {
   try {
     const input: ExtractTextFromImageInput = { imageDataUri };
     const result = await extractTextFromImage(input);
-    return { extractedText: result.extractedText };
+    return { extractedTopics: result };
   } catch (error) {
     console.error("Error extracting text from image:", error);
-    return { extractedText: null, error: error instanceof Error ? error.message : "Failed to extract text from image." };
+    return { extractedTopics: null, error: error instanceof Error ? error.message : "Failed to extract text from image." };
   }
 }
 

@@ -67,4 +67,12 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+  
+  /* Styles for react-image-crop */
+  .ReactCrop__crop-selection {
+    border: 2px dashed hsl(var(--primary));
+  }
+  .ReactCrop__image {
+    max-height: 70vh;
+  }
 }
