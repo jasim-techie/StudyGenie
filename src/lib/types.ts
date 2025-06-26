@@ -1,4 +1,6 @@
 
+import type { Timestamp } from "firebase/firestore";
+
 // --- User Authentication & Profile ---
 export interface UserProfile {
   uid: string;
@@ -7,7 +9,7 @@ export interface UserProfile {
   role: 'student' | 'parent';
   familyCode: string; // Generated for students, entered by parents
   linkedStudent?: string; // For parents, the UID of their child
-  createdAt: string; // ISO Date String
+  createdAt: Timestamp; 
 }
 
 // --- Study Room ---
@@ -16,16 +18,15 @@ export interface UploadedFile {
   name: string;
   type: 'pdf' | 'ppt' | 'pptx' | 'doc' | 'docx' | 'txt' | 'png' | 'jpg' | 'jpeg' | 'gif' | 'svg';
   isStudied: boolean;
-  uploadedAt: string; // ISO Date String
+  uploadedAt: Timestamp;
   firebaseStorageUrl: string;
-  summary?: string; // Optional AI-generated summary
 }
 
 export interface StudyRoomSubject {
   id: string; // Firestore document ID
   name:string;
   files: UploadedFile[];
-  createdAt: string; // ISO Date String
+  createdAt: Timestamp;
 }
 
 // --- Cross-check (Parent-Student Questions) ---
@@ -35,15 +36,17 @@ export interface CrosscheckQuestion {
     type: 'mcq' | 'short';
     options?: string[]; // Only for MCQ
     correctOption?: string; // Only for MCQ
-    askedBy: string; // Parent UID
-    askedAt: string; // ISO Date String
+    askedBy: string; // Parent name
+    askedAt: Timestamp; 
+    answers?: CrosscheckAnswer[]; // Subcollection as an array
 }
 
 export interface CrosscheckAnswer {
     id: string;
     answerText: string;
     answeredBy: string; // Student UID
-    answeredAt: string; // ISO Date String
+    studentName: string;
+    answeredAt: Timestamp; 
     isCorrect?: boolean; // Optional: for auto-graded MCQs
 }
 

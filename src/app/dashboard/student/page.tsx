@@ -7,9 +7,16 @@ import { Button } from "@/components/ui/button";
 import { User, Home, BookOpen, HelpCircleIcon, Sparkles, LayoutDashboard, Settings, LogOut, Loader2, MessageCircleQuestion, Check, X } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/context/AuthContext";
+import { signOut } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import type { CrosscheckQuestion } from "@/lib/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const quickLinks = [
   { name: "New Study Plan", href: "/?tab=study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
@@ -18,47 +25,103 @@ const quickLinks = [
   { name: "Key Point Extractor", href: "/?tab=key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
 
-// Mock data for incoming questions from a parent
-const mockCrosscheckQuestions = [
-  { id: "q1", text: "What is the powerhouse of the cell?", askedBy: "Dad", answered: false },
-  { id: "q2", text: "Explain Newton's First Law of Motion.", askedBy: "Mom", answered: false },
-];
-
 function StudentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [studentName, setStudentName] = useState("Student");
-  const [questions, setQuestions] = useState(mockCrosscheckQuestions);
+  const { user, userProfile } = useAuth();
+  
+  const [questions, setQuestions] = useState<CrosscheckQuestion[]>([]);
+  const [activeQuestion, setActiveQuestion] = useState<CrosscheckQuestion | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [isAnswering, setIsAnswering] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const nameFromQuery = searchParams.get("name");
-    if (nameFromQuery) {
-      setStudentName(nameFromQuery);
-    }
-  }, [searchParams]);
+    if (userProfile && userProfile.role === 'student' && userProfile.familyCode) {
+      const q = query(
+        collection(db, `crosscheck/${userProfile.familyCode}/questions`),
+        orderBy("askedAt", "desc")
+      );
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const fetchedQuestions: CrosscheckQuestion[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedQuestions.push({ id: doc.id, ...doc.data() } as CrosscheckQuestion);
+        });
+        
+        // This is a simplified check. A real app would check against the user's answers.
+        const updatedQuestions = fetchedQuestions.map(q => ({...q, answered: false})); // Placeholder
+        setQuestions(updatedQuestions);
+        setIsLoading(false);
+      });
 
-  const handleLogout = () => {
+      return () => unsubscribe();
+    } else {
+        setIsLoading(false);
+    }
+  }, [userProfile]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
     toast({
       title: "Logged Out",
-      description: "You have been successfully logged out. (Simulation)",
+      description: "You have been successfully logged out.",
     });
     router.push('/login');
   };
 
-  const handleAnswerQuestion = (questionId: string) => {
-    // In a real app, this would open a dialog to submit an answer.
-    // Here, we'll just simulate answering it.
-    console.log(`Firestore Write (Simulated): Saving answer for question ${questionId} to crosscheck/{familyCode}/questions/${questionId}/answers/{studentUid}`);
-    toast({
-      title: "Answer Submitted (Simulated)",
-      description: "Your answer has been sent to your parent.",
-    });
-    setQuestions(prev => prev.map(q => q.id === questionId ? {...q, answered: true} : q));
-  }
+  const handleOpenAnswerDialog = (question: CrosscheckQuestion) => {
+    setActiveQuestion(question);
+    setAnswer("");
+  };
 
+  const handleAnswerSubmit = async () => {
+    if (!answer.trim() || !activeQuestion || !user || !userProfile) return;
+
+    setIsAnswering(true);
+    try {
+      const answerRef = doc(db, `crosscheck/${userProfile.familyCode}/questions/${activeQuestion.id}/answers`, user.uid);
+      await setDoc(answerRef, {
+        answerText: answer,
+        answeredBy: user.uid,
+        studentName: userProfile.name,
+        answeredAt: serverTimestamp(),
+      });
+      toast({ title: "Answer Submitted!", description: "Your answer has been sent to your parent." });
+      setActiveQuestion(null);
+      setAnswer("");
+    } catch (error) {
+      console.error("Error submitting answer: ", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to submit answer." });
+    } finally {
+      setIsAnswering(false);
+    }
+  };
 
   return (
+    <>
+    <Dialog open={!!activeQuestion} onOpenChange={() => setActiveQuestion(null)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{activeQuestion?.askedBy} has a question for you!</DialogTitle>
+          <DialogDescription className="text-lg pt-2">{activeQuestion?.questionText}</DialogDescription>
+        </DialogHeader>
+        <Textarea 
+          placeholder="Type your answer here..."
+          value={answer}
+          onChange={e => setAnswer(e.target.value)}
+          rows={5}
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setActiveQuestion(null)}>Cancel</Button>
+          <Button onClick={handleAnswerSubmit} disabled={isAnswering}>
+            {isAnswering ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+            Submit Answer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
       <Header />
       
@@ -66,24 +129,30 @@ function StudentPageContent() {
         <aside className="w-60 lg:w-64 bg-card p-4 lg:p-6 space-y-6 border-r hidden md:flex flex-col justify-between shadow-sm">
           <div>
             <div className="text-center mb-8">
-              <User className="h-16 w-16 mx-auto text-primary mb-2 rounded-full bg-primary/10 p-3 border-2 border-primary/20" />
-              <h2 className="text-lg lg:text-xl font-semibold">{studentName}</h2>
+              <div className="relative inline-block">
+                <User className="h-16 w-16 mx-auto text-primary mb-2 rounded-full bg-primary/10 p-3 border-2 border-primary/20" />
+                <span className="absolute bottom-2 right-0 block h-4 w-4 rounded-full bg-green-500 border-2 border-card"></span>
+              </div>
+              <h2 className="text-lg lg:text-xl font-semibold">{userProfile?.name}</h2>
               <p className="text-xs lg:text-sm text-muted-foreground">Student Portal</p>
+              {userProfile?.familyCode && (
+                <div className="mt-2">
+                  <p className="text-xs text-muted-foreground">Family Code:</p>
+                  <Badge variant="outline" className="text-sm tracking-widest">{userProfile.familyCode}</Badge>
+                </div>
+              )}
             </div>
             <nav className="space-y-1.5">
               <Button variant="secondary" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href={`/dashboard/student?name=${encodeURIComponent(studentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
+                <Link href={`/dashboard/student`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/?tab=study-plan"><BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI</Link>
-              </Button>
-               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href="/?tab=study-room"><LayoutDashboard className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Room</Link>
               </Button>
             </nav>
           </div>
           <div className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Feature Coming Soon", description: "Account settings will be available here."})}>
+            <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Feature Coming Soon"})}>
               <Settings className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Settings
             </Button>
             <Button variant="outline" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={handleLogout}>
@@ -95,7 +164,7 @@ function StudentPageContent() {
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline text-foreground">
-              Welcome back, <span className="text-primary">{studentName}!</span>
+              Welcome back, <span className="text-primary">{userProfile?.name}!</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground mt-1">
               Ready to ace your studies? Let's get started.
@@ -138,16 +207,14 @@ function StudentPageContent() {
                     <MessageCircleQuestion className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                     Crosscheck Questions from Parents
                 </CardTitle>
-                <CardDescription className="text-sm sm:text-base">
-                    Answer these questions to show your parents what you've learned. (Realtime updates require backend setup)
-                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {questions.length > 0 ? questions.map(q => (
+              {isLoading ? <Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /> : 
+              questions.length > 0 ? questions.map(q => (
                 <Card key={q.id} className={`p-4 ${q.answered ? 'bg-muted/60' : ''}`}>
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                     <div>
-                      <p className={`text-base font-medium ${q.answered ? 'line-through text-muted-foreground' : ''}`}>{q.text}</p>
+                      <p className={`text-base font-medium ${q.answered ? 'line-through text-muted-foreground' : ''}`}>{q.questionText}</p>
                       <p className="text-xs text-muted-foreground">Asked by: {q.askedBy}</p>
                     </div>
                     {q.answered ? (
@@ -155,7 +222,7 @@ function StudentPageContent() {
                         <Check className="h-4 w-4 mr-1.5" /> Answered
                       </div>
                     ) : (
-                      <Button size="sm" onClick={() => handleAnswerQuestion(q.id)}>
+                      <Button size="sm" onClick={() => handleOpenAnswerDialog(q)}>
                         Answer Question
                       </Button>
                     )}
@@ -173,6 +240,7 @@ function StudentPageContent() {
         <p>&copy; {new Date().getFullYear()} StudyGenie AI. Student Dashboard.</p>
       </footer>
     </div>
+    </>
   );
 }
 

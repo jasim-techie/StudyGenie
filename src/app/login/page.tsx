@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,16 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  browserSessionPersistence,
+  setPersistence
+} from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc, getDocs, query, where, collection, serverTimestamp } from "firebase/firestore";
 
-// In a real app, this would be handled by Firebase Auth.
 const generateFamilyCode = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
@@ -31,67 +39,125 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoginView, setIsLoginView] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  
   const router = useRouter();
   const { toast } = useToast();
+  const { user, userProfile, loading } = useAuth();
+  
+  useEffect(() => {
+    // If loading is false and user is logged in, redirect them.
+    if (!loading && user && userProfile) {
+        const dashboardPath = userProfile.role === 'student' ? '/dashboard/student' : '/dashboard/parent';
+        router.push(dashboardPath);
+    }
+  }, [user, userProfile, loading, router]);
+
+
+  const handleSignUp = async () => {
+    if (!fullName.trim()) {
+      toast({ title: "Name Required", description: "Please enter your full name.", variant: "destructive" });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await setPersistence(auth, browserSessionPersistence);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      let userDocData: any = {
+          uid: user.uid,
+          name: fullName,
+          email: user.email,
+          role: role,
+          createdAt: serverTimestamp(),
+      };
+
+      if (role === 'student') {
+        userDocData.familyCode = generateFamilyCode();
+      } else { // Parent
+        if (!familyCode.trim() || familyCode.length !== 6) {
+          throw new Error("A valid 6-character family code is required for parent accounts.");
+        }
+        // Find student by family code
+        const q = query(collection(db, "users"), where("familyCode", "==", familyCode), where("role", "==", "student"));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          throw new Error("No student found with that family code. Please check the code and try again.");
+        }
+        const studentDoc = querySnapshot.docs[0];
+        userDocData.familyCode = familyCode;
+        userDocData.linkedStudent = studentDoc.id;
+      }
+      
+      // Save user data to Firestore
+      await setDoc(doc(db, "users", user.uid), userDocData);
+
+      toast({
+        title: "Account Created!",
+        description: "You have been successfully signed up.",
+      });
+      // The useEffect will handle the redirect
+    } catch (error: any) {
+        console.error("Sign up error:", error);
+        let errorMessage = "An unknown error occurred during sign up.";
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = "This email address is already in use.";
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = "The password is too weak. Please use at least 6 characters.";
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        toast({
+            title: "Sign Up Failed",
+            description: errorMessage,
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    setIsLoading(true);
+    try {
+        await setPersistence(auth, browserSessionPersistence);
+        await signInWithEmailAndPassword(auth, email, password);
+        toast({
+            title: "Login Successful",
+            description: "Welcome back!",
+        });
+        // The useEffect will handle the redirect
+    } catch (error: any) {
+        console.error("Login error:", error);
+        toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please try again.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    const actionText = isLoginView ? "Login" : "Sign Up";
-
-    if (!isLoginView && !fullName.trim()) {
-        toast({
-            title: "Name Required",
-            description: "Please enter your full name.",
-            variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+    if (isLoginView) {
+      handleLogin();
+    } else {
+      handleSignUp();
     }
-    
-    if (!isLoginView && role === 'parent' && !familyCode.trim()) {
-        toast({
-            title: "Family Code Required",
-            description: "Please enter your child's 6-digit family code to link accounts.",
-            variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-    }
-
-    // --- Firebase Simulation ---
-    console.log(`Simulating ${actionText.toLowerCase()} for a ${role}...`);
-    // In a real app, you would call firebase.auth().createUserWithEmailAndPassword() or signInWithEmailAndPassword() here.
-    
-    let description = `Simulating ${actionText} as ${role} with email: ${email}.`;
-    
-    if (!isLoginView) { // Sign Up
-        if (role === 'student') {
-            const newFamilyCode = generateFamilyCode();
-            description += ` A new family code (${newFamilyCode}) has been generated.`;
-            console.log(`Firestore Write (Simulated): Creating user document in 'users/{uid}' with role: 'student', familyCode: '${newFamilyCode}'`);
-        } else { // Parent
-            description += ` Attempting to link with family code: ${familyCode}.`;
-            console.log(`Firestore Write (Simulated): Creating user document in 'users/{uid}' with role: 'parent'. Querying for student with familyCode: '${familyCode}' to link accounts.`);
-        }
-    } else { // Login
-        console.log(`Firestore Read (Simulated): Fetching user profile for logged-in user to determine role and redirect.`);
-    }
-
-    toast({
-      title: `${actionText} Attempt (Simulated)`,
-      description: description,
-      duration: 7000,
-    });
-    
-    setTimeout(() => {
-      setIsLoading(false);
-      const dashboardPath = role === "student" ? '/dashboard/student' : '/dashboard/parent';
-      // Pass the name to the dashboard for personalization
-      router.push(`${dashboardPath}?name=${encodeURIComponent(isLoginView ? 'User' : fullName)}`);
-    }, 1500);
   };
+  
+  if (loading || user) {
+     return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-4 text-lg font-medium text-foreground">Loading...</p>
+        </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4 selection:bg-primary/20">
@@ -232,7 +298,7 @@ export default function LoginPage() {
             {isLoginView ? "Don't have an account? Sign Up" : "Already have an account? Login"}
           </Button>
            <p className="text-xs text-center text-muted-foreground/80 border-t pt-3 w-full">
-             This is a placeholder {isLoginView ? 'login' : 'signup'}. No actual authentication is performed.
+            You will be redirected after successful {isLoginView ? 'login' : 'signup'}.
            </p>
         </CardFooter>
       </Card>

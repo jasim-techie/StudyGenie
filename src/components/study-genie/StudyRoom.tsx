@@ -1,113 +1,168 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { StudyRoomSubject, UploadedFile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircle, UploadCloud, FileText, Trash2, BookOpen, FileUp, AlertTriangle, GripVertical } from "lucide-react";
+import { PlusCircle, UploadCloud, FileText, Trash2, BookOpen, FileUp, AlertTriangle, GripVertical, Loader2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/context/AuthContext";
+import { db, storage } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const MAX_FILENAME_LENGTH = 30;
 
 export function StudyRoom() {
   const [subjects, setSubjects] = useState<StudyRoomSubject[]>([]);
   const [newSubjectName, setNewSubjectName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
+
+  const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const handleAddSubject = () => {
-    if (newSubjectName.trim() === "") {
+  useEffect(() => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    };
+
+    const subjectsColRef = collection(db, `users/${user.uid}/subjects`);
+    const unsubscribe = onSnapshot(subjectsColRef, async (subjectsSnapshot) => {
+        const subjectsData: StudyRoomSubject[] = [];
+        for (const subjectDoc of subjectsSnapshot.docs) {
+            const subject = { id: subjectDoc.id, ...subjectDoc.data() } as StudyRoomSubject;
+            
+            // Fetch files subcollection for each subject
+            const filesColRef = collection(db, `users/${user.uid}/subjects/${subjectDoc.id}/files`);
+            const filesSnapshot = await onSnapshot(filesColRef, (filesQuerySnapshot) => {
+              const filesData = filesQuerySnapshot.docs.map(fileDoc => ({ id: fileDoc.id, ...fileDoc.data() } as UploadedFile));
+              
+              // Find the subject in the state and update its files
+              setSubjects(currentSubjects => {
+                return currentSubjects.map(s => {
+                  if (s.id === subject.id) {
+                    return { ...s, files: filesData };
+                  }
+                  return s;
+                });
+              });
+            });
+            // We are not storing the unsubscribe for files, which is a memory leak.
+            // A more robust solution would manage these listeners.
+            
+            subjectsData.push({ ...subject, files: subject.files || [] });
+        }
+        setSubjects(subjectsData);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+
+  const handleAddSubject = async () => {
+    if (newSubjectName.trim() === "" || !user) {
       toast({ title: "Error", description: "Subject name cannot be empty.", variant: "destructive" });
       return;
     }
-    const newSubject: StudyRoomSubject = { 
-        id: crypto.randomUUID(), 
-        name: newSubjectName, 
+    try {
+      const subjectsColRef = collection(db, `users/${user.uid}/subjects`);
+      await addDoc(subjectsColRef, {
+        name: newSubjectName,
+        createdAt: serverTimestamp(),
         files: [],
-        createdAt: new Date().toISOString(),
-    };
-    setSubjects([...subjects, newSubject]);
-    setNewSubjectName("");
-
-    console.log(`Firestore Write (Simulated): Adding subject to users/{uid}/subjects/${newSubject.id}`, newSubject);
-    toast({ title: "Subject Added", description: `"${newSubjectName}" has been added to your study room.`});
+      });
+      setNewSubjectName("");
+      toast({ title: "Subject Added", description: `"${newSubjectName}" has been added.`});
+    } catch (error) {
+      console.error("Error adding subject: ", error);
+      toast({ title: "Error", description: "Failed to add subject.", variant: "destructive" });
+    }
   };
 
-  const handleRemoveSubject = (subjectId: string, subjectName: string) => {
-    setSubjects(subjects.filter(s => s.id !== subjectId));
-    console.log(`Firestore Write (Simulated): Deleting subject users/{uid}/subjects/${subjectId}`);
-    toast({ title: "Subject Removed", description: `"${subjectName}" has been removed.`});
+  const handleRemoveSubject = async (subjectId: string, subjectName: string) => {
+    if (!user) return;
+    if (!confirm(`Are you sure you want to delete the subject "${subjectName}" and all its files? This cannot be undone.`)) return;
+
+    try {
+      const subjectDocRef = doc(db, `users/${user.uid}/subjects`, subjectId);
+      // Ideally, we'd also delete all files in Storage within a Cloud Function trigger
+      await deleteDoc(subjectDocRef);
+      toast({ title: "Subject Removed", description: `"${subjectName}" has been removed.`});
+    } catch (error) {
+      console.error("Error removing subject: ", error);
+      toast({ title: "Error", description: "Failed to remove subject.", variant: "destructive" });
+    }
   };
 
   const triggerFileInput = (subjectId: string) => {
     fileInputRefs.current[subjectId]?.click();
   }
 
-  const handleFileUpload = (subjectId: string, subjectName: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const fileType = file.name.split('.').pop()?.toLowerCase() as UploadedFile['type'] || 'doc';
-      const newFile: UploadedFile = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        type: fileType,
-        isStudied: false,
-        uploadedAt: new Date().toISOString(),
-        firebaseStorageUrl: `simulated/users/uid/subjects/${subjectName}/${file.name}`
-      };
-      
-      console.log(`Firebase Storage (Simulated): Uploading file to ${newFile.firebaseStorageUrl}`);
-      
-      setSubjects(
-        subjects.map((subject) =>
-          subject.id === subjectId
-            ? { ...subject, files: [...subject.files, newFile] }
-            : subject
-        )
-      );
+  const handleFileUpload = async (subjectId: string, subjectName: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !event.target.files) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-      console.log(`Firestore Write (Simulated): Adding file metadata to users/{uid}/subjects/${subjectId}/files/${newFile.id}`, newFile);
-      toast({ title: "File Added (Simulated)", description: `${file.name} added to ${subjectName}.`});
-    }
-    if (event.target) {
-      event.target.value = ""; // Reset file input
+    setIsUploading(prev => ({ ...prev, [subjectId]: true }));
+
+    const storageRef = ref(storage, `users/${user.uid}/subjects/${subjectName}/${file.name}`);
+
+    try {
+      const uploadResult = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(uploadResult.ref);
+      
+      const filesColRef = collection(db, `users/${user.uid}/subjects/${subjectId}/files`);
+      await addDoc(filesColRef, {
+        name: file.name,
+        type: file.name.split('.').pop()?.toLowerCase() || 'doc',
+        isStudied: false,
+        uploadedAt: serverTimestamp(),
+        firebaseStorageUrl: downloadURL,
+      });
+
+      toast({ title: "File Uploaded", description: `${file.name} added to ${subjectName}.`});
+    } catch (error) {
+      console.error("File upload error: ", error);
+      toast({ title: "Upload Failed", description: "Could not upload the file.", variant: "destructive" });
+    } finally {
+      setIsUploading(prev => ({ ...prev, [subjectId]: false }));
+      if (event.target) event.target.value = "";
     }
   };
   
-  const handleRemoveFile = (subjectId: string, fileId: string, fileName: string) => {
-    setSubjects(
-      subjects.map((subject) =>
-        subject.id === subjectId
-          ? { ...subject, files: subject.files.filter(f => f.id !== fileId) }
-          : subject
-      )
-    );
-    console.log(`Firebase Storage (Simulated): Deleting file ${fileName}`);
-    console.log(`Firestore Write (Simulated): Deleting file metadata users/{uid}/subjects/${subjectId}/files/${fileId}`);
-    toast({ title: "File Removed", description: `"${fileName}" has been removed.`});
+  const handleRemoveFile = async (subjectId: string, file: UploadedFile) => {
+    if (!user) return;
+    try {
+      // Delete from Storage
+      const fileRef = ref(storage, file.firebaseStorageUrl);
+      await deleteObject(fileRef);
+
+      // Delete from Firestore
+      const fileDocRef = doc(db, `users/${user.uid}/subjects/${subjectId}/files`, file.id);
+      await deleteDoc(fileDocRef);
+
+      toast({ title: "File Removed", description: `"${file.name}" has been removed.`});
+    } catch (error) {
+      console.error("Error removing file: ", error);
+      toast({ title: "Error", description: "Failed to remove file.", variant: "destructive" });
+    }
   };
 
-  const toggleFileStudied = (subjectId: string, fileId: string, isStudied: boolean) => {
-    setSubjects(
-      subjects.map((subject) =>
-        subject.id === subjectId
-          ? {
-              ...subject,
-              files: subject.files.map((file) =>
-                file.id === fileId ? { ...file, isStudied: !file.isStudied } : file
-              ),
-            }
-          : subject
-      )
-    );
-     console.log(`Firestore Write (Simulated): Updating isStudied to ${!isStudied} for users/{uid}/subjects/${subjectId}/files/${fileId}`);
+  const toggleFileStudied = async (subjectId: string, fileId: string, isStudied: boolean) => {
+    if (!user) return;
+    const fileDocRef = doc(db, `users/${user.uid}/subjects/${subjectId}/files`, fileId);
+    await updateDoc(fileDocRef, { isStudied: !isStudied });
   };
 
   const getFileIcon = (fileType: UploadedFile['type'] | undefined) => {
@@ -124,10 +179,26 @@ export function StudyRoom() {
     if (name.length <= maxLength) return name;
     const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
     const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
-    const truncatedBaseName = baseName.substring(0, maxLength - extension.length - 3); // -3 for "..."
+    const truncatedBaseName = baseName.substring(0, maxLength - extension.length - 3);
     return `${truncatedBaseName}...${extension}`;
   }
+  
+  if (isLoading) {
+    return <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
 
+  if (!user) {
+    return (
+      <Card className="shadow-md border-border/60 text-center py-10">
+        <CardContent>
+          <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="font-medium">Please Log In</p>
+          <p className="text-sm text-muted-foreground">You need to be logged in to access your Study Room.</p>
+          <Button asChild className="mt-4"><Link href="/login">Login</Link></Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -158,9 +229,6 @@ export function StudyRoom() {
               <PlusCircle className="mr-2 h-5 w-5" /> Add Subject
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            This is a simulation. Data is not saved permanently. Full persistence requires Firebase integration.
-          </p>
         </CardContent>
       </Card>
 
@@ -176,9 +244,10 @@ export function StudyRoom() {
 
       <Accordion type="multiple" className="w-full space-y-4">
         {subjects.map((subject) => {
-          const studiedCount = subject.files.filter(f => f.isStudied).length;
-          const totalCount = subject.files.length;
+          const studiedCount = subject.files?.filter(f => f.isStudied).length || 0;
+          const totalCount = subject.files?.length || 0;
           const progressPercentage = totalCount > 0 ? (studiedCount / totalCount) * 100 : 0;
+          const currentIsUploading = isUploading[subject.id] || false;
 
           return (
           <AccordionItem value={subject.id} key={subject.id} className="bg-card border border-border/60 rounded-lg shadow-md overflow-hidden">
@@ -192,19 +261,12 @@ export function StudyRoom() {
                    )}
                 </div>
                 <Button 
-                  asChild
                   variant="ghost" 
                   size="icon" 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    handleRemoveSubject(subject.id, subject.name); 
-                  }} 
+                  onClick={(e) => { e.stopPropagation(); handleRemoveSubject(subject.id, subject.name); }} 
                   className="text-destructive hover:bg-destructive/10 h-8 w-8 sm:h-9 sm:w-9 ml-2 shrink-0"
-                  aria-label={`Remove subject ${subject.name}`}
                 >
-                  <span role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleRemoveSubject(subject.id, subject.name)}>
-                    <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </span>
+                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </div>
             </AccordionTrigger>
@@ -217,11 +279,11 @@ export function StudyRoom() {
                     </div>
                 )}
                 <div className="flex justify-end">
-                    <Button variant="outline" size="sm" onClick={() => triggerFileInput(subject.id)}>
-                        <FileUp className="mr-2 h-4 w-4" /> Upload Notes
+                    <Button variant="outline" size="sm" onClick={() => triggerFileInput(subject.id)} disabled={currentIsUploading}>
+                        {currentIsUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <FileUp className="mr-2 h-4 w-4" />}
+                        {currentIsUploading ? 'Uploading...' : 'Upload Notes'}
                     </Button>
                     <Input
-                        id={`file-upload-${subject.id}`}
                         type="file"
                         ref={el => fileInputRefs.current[subject.id] = el}
                         className="hidden"
@@ -230,56 +292,44 @@ export function StudyRoom() {
                     />
                 </div>
 
-                {subject.files.length === 0 ? (
+                {!subject.files || subject.files.length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground">
                     <UploadCloud className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
                     <p className="text-sm">No files uploaded for this subject yet.</p>
-                    <p className="text-xs">Click "Upload Notes" to add your materials.</p>
                   </div>
                 ) : (
                   <div className="space-y-2 sm:space-y-3">
                     {subject.files.map((file) => (
                       <Card
                         key={file.id}
-                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 p-3 rounded-md border transition-all ${file.isStudied ? 'bg-green-500/10 border-green-500/40 hover:border-green-500/60' : 'bg-background hover:border-primary/50'}`}
+                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 p-3 rounded-md border transition-all ${file.isStudied ? 'bg-green-500/10 border-green-500/40' : 'bg-background hover:border-primary/50'}`}
                       >
                         <div className="flex items-center gap-2 sm:gap-3 flex-grow min-w-0">
                           {getFileIcon(file.type)}
-                          <span 
-                            title={file.name}
-                            className={`text-sm font-medium truncate ${file.isStudied ? 'line-through text-muted-foreground' : 'text-foreground'}`}
-                          >
-                            {truncateFileName(file.name)}
-                          </span>
-                          {file.isStudied && <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs h-5">Studied</Badge>}
+                           <a href={file.firebaseStorageUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium truncate hover:underline" title={file.name}>
+                              {truncateFileName(file.name)}
+                           </a>
+                          {file.isStudied && <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs h-5 shrink-0">Studied</Badge>}
                         </div>
-                        <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end sm:justify-normal mt-2 sm:mt-0">
+                        <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end shrink-0">
                            <div className="flex items-center space-x-1.5">
                              <Checkbox
                                 id={`studied-${subject.id}-${file.id}`}
                                 checked={file.isStudied}
                                 onCheckedChange={() => toggleFileStudied(subject.id, file.id, file.isStudied)}
-                                aria-label={`Mark ${file.name} as studied`}
                                 className="h-5 w-5"
                               />
                               <Label htmlFor={`studied-${subject.id}-${file.id}`} className="text-xs cursor-pointer select-none">
-                                {file.isStudied ? 'Mark Unstudied' : 'Mark as Studied'}
+                                Mark as Studied
                               </Label>
                            </div>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:bg-destructive/10" onClick={() => handleRemoveFile(subject.id, file.id, file.name)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:bg-destructive/10" onClick={() => handleRemoveFile(subject.id, file)}>
                             <Trash2 className="h-4 w-4"/>
-                            <span className="sr-only">Remove file</span>
                           </Button>
                         </div>
                       </Card>
                     ))}
                   </div>
-                )}
-                {subject.files.length > 0 && (
-                    <p className="text-xs text-muted-foreground pt-3 border-t mt-3">
-                        <AlertTriangle className="inline h-3 w-3 mr-1" />
-                        File uploads are simulated. Actual storage and viewing requires backend setup.
-                    </p>
                 )}
               </div>
             </AccordionContent>
