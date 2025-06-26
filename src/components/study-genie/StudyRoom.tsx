@@ -12,6 +12,7 @@ import { PlusCircle, UploadCloud, FileText, Trash2, BookOpen, FileUp, AlertTrian
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 const MAX_FILENAME_LENGTH = 30;
 
@@ -26,33 +27,44 @@ export function StudyRoom() {
       toast({ title: "Error", description: "Subject name cannot be empty.", variant: "destructive" });
       return;
     }
-    setSubjects([
-      ...subjects,
-      { id: crypto.randomUUID(), name: newSubjectName, files: [] },
-    ]);
+    const newSubject: StudyRoomSubject = { 
+        id: crypto.randomUUID(), 
+        name: newSubjectName, 
+        files: [],
+        createdAt: new Date().toISOString(),
+    };
+    setSubjects([...subjects, newSubject]);
     setNewSubjectName("");
+
+    console.log(`Firestore Write (Simulated): Adding subject to users/{uid}/subjects/${newSubject.id}`, newSubject);
     toast({ title: "Subject Added", description: `"${newSubjectName}" has been added to your study room.`});
   };
 
-  const handleRemoveSubject = (subjectId: string) => {
+  const handleRemoveSubject = (subjectId: string, subjectName: string) => {
     setSubjects(subjects.filter(s => s.id !== subjectId));
-    toast({ title: "Subject Removed", description: `Subject has been removed.`});
+    console.log(`Firestore Write (Simulated): Deleting subject users/{uid}/subjects/${subjectId}`);
+    toast({ title: "Subject Removed", description: `"${subjectName}" has been removed.`});
   };
 
   const triggerFileInput = (subjectId: string) => {
     fileInputRefs.current[subjectId]?.click();
   }
 
-  const handleFileUpload = (subjectId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (subjectId: string, subjectName: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      const fileType = file.name.split('.').pop()?.toLowerCase() as UploadedFile['type'] || 'doc';
       const newFile: UploadedFile = {
         id: crypto.randomUUID(),
         name: file.name,
-        type: file.name.split('.').pop()?.toLowerCase() as UploadedFile['type'] || 'doc',
+        type: fileType,
         isStudied: false,
-        // In a real app, you'd handle the upload here and store a URL or reference
+        uploadedAt: new Date().toISOString(),
+        firebaseStorageUrl: `simulated/users/uid/subjects/${subjectName}/${file.name}`
       };
+      
+      console.log(`Firebase Storage (Simulated): Uploading file to ${newFile.firebaseStorageUrl}`);
+      
       setSubjects(
         subjects.map((subject) =>
           subject.id === subjectId
@@ -60,14 +72,16 @@ export function StudyRoom() {
             : subject
         )
       );
-      toast({ title: "File Added (Simulated)", description: `${file.name} added to subject. Actual file upload requires backend.`});
+
+      console.log(`Firestore Write (Simulated): Adding file metadata to users/{uid}/subjects/${subjectId}/files/${newFile.id}`, newFile);
+      toast({ title: "File Added (Simulated)", description: `${file.name} added to ${subjectName}.`});
     }
     if (event.target) {
       event.target.value = ""; // Reset file input
     }
   };
   
-  const handleRemoveFile = (subjectId: string, fileId: string) => {
+  const handleRemoveFile = (subjectId: string, fileId: string, fileName: string) => {
     setSubjects(
       subjects.map((subject) =>
         subject.id === subjectId
@@ -75,10 +89,12 @@ export function StudyRoom() {
           : subject
       )
     );
-    toast({ title: "File Removed", description: `File removed from subject.`});
+    console.log(`Firebase Storage (Simulated): Deleting file ${fileName}`);
+    console.log(`Firestore Write (Simulated): Deleting file metadata users/{uid}/subjects/${subjectId}/files/${fileId}`);
+    toast({ title: "File Removed", description: `"${fileName}" has been removed.`});
   };
 
-  const toggleFileStudied = (subjectId: string, fileId: string) => {
+  const toggleFileStudied = (subjectId: string, fileId: string, isStudied: boolean) => {
     setSubjects(
       subjects.map((subject) =>
         subject.id === subjectId
@@ -91,6 +107,7 @@ export function StudyRoom() {
           : subject
       )
     );
+     console.log(`Firestore Write (Simulated): Updating isStudied to ${!isStudied} for users/{uid}/subjects/${subjectId}/files/${fileId}`);
   };
 
   const getFileIcon = (fileType: UploadedFile['type'] | undefined) => {
@@ -98,7 +115,7 @@ export function StudyRoom() {
     if (type === 'pdf') return <FileText className="h-5 w-5 text-red-600" />;
     if (['ppt', 'pptx'].includes(type || '')) return <FileText className="h-5 w-5 text-orange-500" />;
     if (['doc', 'docx'].includes(type || '')) return <FileText className="h-5 w-5 text-blue-600" />;
-    if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(type || '')) return <FileText className="h-5 w-5 text-green-600" />; // Could use ImageIcon
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(type || '')) return <FileText className="h-5 w-5 text-green-600" />;
     if (type === 'txt') return <FileText className="h-5 w-5 text-gray-700" />;
     return <FileText className="h-5 w-5 text-muted-foreground" />;
   };
@@ -142,7 +159,7 @@ export function StudyRoom() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Subjects added here are for local organization. Full persistence requires login & backend.
+            This is a simulation. Data is not saved permanently. Full persistence requires Firebase integration.
           </p>
         </CardContent>
       </Card>
@@ -158,13 +175,21 @@ export function StudyRoom() {
       )}
 
       <Accordion type="multiple" className="w-full space-y-4">
-        {subjects.map((subject, subjectIndex) => (
+        {subjects.map((subject) => {
+          const studiedCount = subject.files.filter(f => f.isStudied).length;
+          const totalCount = subject.files.length;
+          const progressPercentage = totalCount > 0 ? (studiedCount / totalCount) * 100 : 0;
+
+          return (
           <AccordionItem value={subject.id} key={subject.id} className="bg-card border border-border/60 rounded-lg shadow-md overflow-hidden">
             <AccordionTrigger className="text-lg sm:text-xl font-medium hover:bg-muted/20 data-[state=open]:bg-muted/20 px-4 sm:px-6 py-3 sm:py-4 transition-colors duration-150 ease-in-out">
               <div className="flex justify-between items-center w-full">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 sm:gap-4 flex-grow min-w-0">
                   <GripVertical className="h-5 w-5 text-muted-foreground hidden sm:block" />
-                  <span>{subject.name}</span>
+                  <span className="truncate">{subject.name}</span>
+                   {totalCount > 0 && (
+                      <Badge variant="secondary">{studiedCount}/{totalCount} Studied</Badge>
+                   )}
                 </div>
                 <Button 
                   asChild
@@ -172,12 +197,12 @@ export function StudyRoom() {
                   size="icon" 
                   onClick={(e) => { 
                     e.stopPropagation(); 
-                    handleRemoveSubject(subject.id); 
+                    handleRemoveSubject(subject.id, subject.name); 
                   }} 
-                  className="text-destructive hover:bg-destructive/10 h-8 w-8 sm:h-9 sm:w-9"
+                  className="text-destructive hover:bg-destructive/10 h-8 w-8 sm:h-9 sm:w-9 ml-2 shrink-0"
                   aria-label={`Remove subject ${subject.name}`}
                 >
-                  <span role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleRemoveSubject(subject.id)}>
+                  <span role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleRemoveSubject(subject.id, subject.name)}>
                     <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   </span>
                 </Button>
@@ -185,6 +210,12 @@ export function StudyRoom() {
             </AccordionTrigger>
             <AccordionContent className="px-4 sm:px-6 py-4 border-t bg-muted/10">
               <div className="space-y-4">
+                 {totalCount > 0 && (
+                    <div className="space-y-2">
+                        <Label>Progress</Label>
+                        <Progress value={progressPercentage} className="h-2" />
+                    </div>
+                )}
                 <div className="flex justify-end">
                     <Button variant="outline" size="sm" onClick={() => triggerFileInput(subject.id)}>
                         <FileUp className="mr-2 h-4 w-4" /> Upload Notes
@@ -194,7 +225,7 @@ export function StudyRoom() {
                         type="file"
                         ref={el => fileInputRefs.current[subject.id] = el}
                         className="hidden"
-                        onChange={(e) => handleFileUpload(subject.id, e)}
+                        onChange={(e) => handleFileUpload(subject.id, subject.name, e)}
                         accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.svg"
                     />
                 </div>
@@ -227,7 +258,7 @@ export function StudyRoom() {
                              <Checkbox
                                 id={`studied-${subject.id}-${file.id}`}
                                 checked={file.isStudied}
-                                onCheckedChange={() => toggleFileStudied(subject.id, file.id)}
+                                onCheckedChange={() => toggleFileStudied(subject.id, file.id, file.isStudied)}
                                 aria-label={`Mark ${file.name} as studied`}
                                 className="h-5 w-5"
                               />
@@ -235,7 +266,7 @@ export function StudyRoom() {
                                 {file.isStudied ? 'Mark Unstudied' : 'Mark as Studied'}
                               </Label>
                            </div>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:bg-destructive/10" onClick={() => handleRemoveFile(subject.id, file.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:bg-destructive/10" onClick={() => handleRemoveFile(subject.id, file.id, file.name)}>
                             <Trash2 className="h-4 w-4"/>
                             <span className="sr-only">Remove file</span>
                           </Button>
@@ -253,7 +284,8 @@ export function StudyRoom() {
               </div>
             </AccordionContent>
           </AccordionItem>
-        ))}
+          )
+        })}
       </Accordion>
     </div>
   );

@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, BookCopy, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, Users, CheckCircle2, Brain, Search, Loader2 } from "lucide-react";
+import { BarChart3, Users, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, CheckCircle2, Brain, Search, Loader2, Send } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const mockStudentName = "Your Child"; 
 
@@ -21,20 +23,13 @@ const mockSubjectsProgress = [
   { id: "4", name: "Biology", filesStudied: 2, filesTotal: 15, lastStudiedFile: "Cell Structure.pdf", quizAttempts: 0, avgScore: 0 },
 ];
 
-function truncateFileName(name: string, maxLength: number = 20): string {
-  if (name.length <= maxLength) return name;
-  const extension = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
-  const baseName = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
-  if (baseName.length <= maxLength - extension.length - 3) return name;
-  return `${baseName.substring(0, maxLength - extension.length - 3)}...${extension}`;
-}
-
 function ParentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [parentName, setParentName] = useState("Guardian");
   const [studentName, setStudentName] = useState(mockStudentName);
+  const [crosscheckQuestion, setCrosscheckQuestion] = useState("");
 
   useEffect(() => {
     const nameFromQuery = searchParams.get("name");
@@ -58,14 +53,31 @@ function ParentPageContent() {
         duration: 5000
     });
   };
-  
-  const handleViewDetailedReport = (subjectName: string) => {
-     toast({
-        title: `Detailed Report for ${subjectName}`,
-        description: `This would show a detailed report of quizzes, study time, etc. for ${subjectName}. (Feature Coming Soon)`,
-        duration: 4000
+
+  const handleSendCrosscheck = () => {
+    if (!crosscheckQuestion.trim()) {
+      toast({
+        title: "Empty Question",
+        description: "Please type a question to send to your child.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log(`Firestore Write (Simulated): Adding question to crosscheck/{familyCode}/questions`);
+    console.log({
+      questionText: crosscheckQuestion,
+      type: "short", // Defaulting to short answer for this simulation
+      askedBy: parentName,
+      askedAt: new Date()
     });
-  }
+
+    toast({
+      title: "Question Sent!",
+      description: `Your question has been sent to ${studentName}. (Simulation)`,
+    });
+    setCrosscheckQuestion("");
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
@@ -80,7 +92,7 @@ function ParentPageContent() {
               <p className="text-xs lg:text-sm text-muted-foreground">Parent Portal</p>
             </div>
             <nav className="space-y-1.5">
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+              <Button variant="secondary" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href={`/dashboard/parent?name=${encodeURIComponent(parentName)}`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Coming Soon", description: "Student profile & settings will be here."})}>
@@ -107,101 +119,115 @@ function ParentPageContent() {
               Stay updated on your child's study activities and progress.
             </p>
           </div>
-
-          <Card className="shadow-xl border-border/80 mb-6 sm:mb-8 bg-card/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl sm:text-2xl lg:text-3xl flex items-center">
-                <BarChart3 className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-primary" />
-                Subject Progress
-              </CardTitle>
-              <CardDescription className="text-sm sm:text-base">
-                View files studied, quiz performance, and last accessed materials for {studentName}.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 sm:space-y-6">
-              {mockSubjectsProgress.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No subject data available for {studentName} yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                {mockSubjectsProgress.map(subject => (
-                  <Card key={subject.id} className="bg-card border-border/60 hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2 sm:pb-3">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg sm:text-xl font-semibold">{subject.name}</CardTitle>
-                        <Badge variant={subject.filesStudied === subject.filesTotal ? "default" : "secondary"} className={`${subject.filesStudied === subject.filesTotal ? 'bg-green-600 text-white' : 'bg-blue-500 text-white'} text-xs sm:text-sm shadow-sm`}>
-                          {subject.filesStudied === subject.filesTotal && <CheckCircle2 className="inline mr-1.5 h-4 w-4"/>}
-                          {subject.filesStudied} / {subject.filesTotal} Files Studied
-                        </Badge>
-                      </div>
-                       <Progress 
-                            value={(subject.filesStudied / subject.filesTotal) * 100} 
-                            className="h-2 sm:h-2.5 mt-2" 
-                            indicatorClassName={subject.filesStudied === subject.filesTotal ? "bg-green-500" : "bg-primary"}
-                        />
-                    </CardHeader>
-                    <CardContent className="text-xs sm:text-sm space-y-1.5">
-                      <p className="text-muted-foreground">Last material: <em className="text-foreground">{subject.lastStudiedFile}</em></p>
-                      <p className="text-muted-foreground">Quiz Attempts: <span className="font-medium text-foreground">{subject.quizAttempts}</span></p>
-                      <p className="text-muted-foreground">Average Score: <span className={`font-medium ${subject.avgScore >= 70 ? 'text-green-600' : 'text-orange-600'}`}>{subject.avgScore > 0 ? `${subject.avgScore}%` : 'N/A'}</span></p>
-                    </CardContent>
-                    <CardFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
-                       <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleAskQuestionOnFile(subject.name, subject.lastStudiedFile)}
-                          className="w-full sm:w-auto"
-                        >
-                         <MessageCircleQuestion className="mr-1.5 h-4 w-4" /> Ask AI about "{truncateFileName(subject.lastStudiedFile)}"
-                       </Button>
-                       <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleViewDetailedReport(subject.name)}
-                          className="w-full sm:w-auto text-primary hover:text-primary/80"
-                        >
-                         <Search className="mr-1.5 h-4 w-4" /> View Report
-                       </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground pt-4 border-t mt-4 text-center">
-                Progress data is currently mocked. Real data requires backend integration.
-              </p>
-            </CardContent>
-          </Card>
           
-          <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
-            <CardHeader>
-                <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
-                    <Brain className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-accent" />
-                    Parental AI Tools (Coming Soon)
-                </CardTitle>
-                <CardDescription className="text-sm sm:text-base">
-                    Future tools to help you support {studentName}'s learning journey.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm sm:text-base">
-                <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
-                    <h4 className="font-semibold mb-1">Custom Quiz Generation</h4>
-                    <p className="text-muted-foreground text-xs sm:text-sm">Create quizzes on specific weak areas identified from reports.</p>
-                </div>
-                 <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
-                    <h4 className="font-semibold mb-1">Study Habit Insights</h4>
-                    <p className="text-muted-foreground text-xs sm:text-sm">AI-driven suggestions based on study patterns.</p>
-                </div>
-                 <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
-                    <h4 className="font-semibold mb-1">Learning Resource Curation</h4>
-                    <p className="text-muted-foreground text-xs sm:text-sm">Suggest supplementary materials for challenging topics.</p>
-                </div>
-                 <div className="p-4 bg-muted/50 rounded-lg shadow-sm">
-                    <h4 className="font-semibold mb-1">Goal Setting & Tracking</h4>
-                    <p className="text-muted-foreground text-xs sm:text-sm">Collaborate with {studentName} to set and monitor academic goals.</p>
-                </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+            <div className="xl:col-span-2 space-y-6 sm:space-y-8">
+                <Card className="shadow-xl border-border/80 bg-card/80 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="font-headline text-xl sm:text-2xl lg:text-3xl flex items-center">
+                      <BarChart3 className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-primary" />
+                      Subject Progress
+                    </CardTitle>
+                    <CardDescription className="text-sm sm:text-base">
+                      View files studied and last accessed materials for {studentName}.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 sm:space-y-6">
+                    {mockSubjectsProgress.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No subject data available for {studentName} yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                      {mockSubjectsProgress.map(subject => (
+                        <Card key={subject.id} className="bg-card border-border/60 hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-2 sm:pb-3">
+                            <div className="flex justify-between items-start">
+                              <CardTitle className="text-lg sm:text-xl font-semibold">{subject.name}</CardTitle>
+                              <Badge variant={subject.filesStudied === subject.filesTotal ? "default" : "secondary"} className={`${subject.filesStudied === subject.filesTotal ? 'bg-green-600 text-white' : 'bg-blue-500 text-white'} text-xs sm:text-sm shadow-sm`}>
+                                {subject.filesStudied === subject.filesTotal && <CheckCircle2 className="inline mr-1.5 h-4 w-4"/>}
+                                {subject.filesStudied} / {subject.filesTotal} Files Studied
+                              </Badge>
+                            </div>
+                            <Progress 
+                                  value={(subject.filesStudied / subject.filesTotal) * 100} 
+                                  className="h-2 sm:h-2.5 mt-2" 
+                                  indicatorClassName={subject.filesStudied === subject.filesTotal ? "bg-green-500" : "bg-primary"}
+                              />
+                          </CardHeader>
+                          <CardContent className="text-xs sm:text-sm space-y-1.5">
+                            <p className="text-muted-foreground">Last material: <em className="text-foreground">{subject.lastStudiedFile}</em></p>
+                            <p className="text-muted-foreground">Quiz Attempts: <span className="font-medium text-foreground">{subject.quizAttempts}</span></p>
+                            <p className="text-muted-foreground">Average Score: <span className={`font-medium ${subject.avgScore >= 70 ? 'text-green-600' : 'text-orange-600'}`}>{subject.avgScore > 0 ? `${subject.avgScore}%` : 'N/A'}</span></p>
+                          </CardContent>
+                          <CardFooter className="pt-3 sm:pt-4">
+                            <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => toast({title: "Feature coming soon!", description:"This will show a detailed report for the subject."})}
+                                className="w-full text-primary hover:text-primary/80 justify-start"
+                              >
+                              <Search className="mr-1.5 h-4 w-4" /> View Detailed Report
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground pt-4 border-t mt-4 text-center">
+                      Progress data is currently mocked. Real data requires backend integration.
+                    </p>
+                  </CardContent>
+                </Card>
+            </div>
+            
+            <div className="space-y-6 sm:space-y-8">
+              <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
+                        <FileQuestion className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-accent" />
+                        Crosscheck Question
+                    </CardTitle>
+                    <CardDescription className="text-sm sm:text-base">
+                        Send a quick question to {studentName} to check their understanding.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Textarea 
+                      placeholder="e.g., What is the powerhouse of the cell?"
+                      value={crosscheckQuestion}
+                      onChange={(e) => setCrosscheckQuestion(e.target.value)}
+                      rows={4}
+                      className="text-base"
+                    />
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleSendCrosscheck} className="w-full">
+                    <Send className="mr-2 h-4 w-4" />
+                    Send Question
+                  </Button>
+                </CardFooter>
+              </Card>
 
+              <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
+                        <Brain className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-destructive" />
+                        Parental AI Tools (Coming Soon)
+                    </CardTitle>
+                    <CardDescription className="text-sm sm:text-base">
+                        Future tools to help you support the learning journey.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 gap-2 text-sm sm:text-base">
+                    <p className="text-muted-foreground text-xs sm:text-sm p-3 bg-muted/50 rounded-lg">
+                      - Custom quiz generation on weak areas.
+                    </p>
+                    <p className="text-muted-foreground text-xs sm:text-sm p-3 bg-muted/50 rounded-lg">
+                      - AI-driven suggestions based on study patterns.
+                    </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </main>
       </div>
        <footer className="py-4 sm:py-6 text-center text-sm text-muted-foreground border-t bg-card">

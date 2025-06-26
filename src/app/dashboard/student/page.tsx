@@ -4,11 +4,12 @@
 import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
-import { User, Home, BookOpen, HelpCircleIcon, Sparkles, LayoutDashboard, Settings, LogOut, Loader2 } from "lucide-react";
+import { User, Home, BookOpen, HelpCircleIcon, Sparkles, LayoutDashboard, Settings, LogOut, Loader2, MessageCircleQuestion, Check, X } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const quickLinks = [
   { name: "New Study Plan", href: "/?tab=study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
@@ -17,11 +18,18 @@ const quickLinks = [
   { name: "Key Point Extractor", href: "/?tab=key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
 
+// Mock data for incoming questions from a parent
+const mockCrosscheckQuestions = [
+  { id: "q1", text: "What is the powerhouse of the cell?", askedBy: "Dad", answered: false },
+  { id: "q2", text: "Explain Newton's First Law of Motion.", askedBy: "Mom", answered: false },
+];
+
 function StudentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [studentName, setStudentName] = useState("Student");
+  const [questions, setQuestions] = useState(mockCrosscheckQuestions);
 
   useEffect(() => {
     const nameFromQuery = searchParams.get("name");
@@ -37,6 +45,18 @@ function StudentPageContent() {
     });
     router.push('/login');
   };
+
+  const handleAnswerQuestion = (questionId: string) => {
+    // In a real app, this would open a dialog to submit an answer.
+    // Here, we'll just simulate answering it.
+    console.log(`Firestore Write (Simulated): Saving answer for question ${questionId} to crosscheck/{familyCode}/questions/${questionId}/answers/{studentUid}`);
+    toast({
+      title: "Answer Submitted (Simulated)",
+      description: "Your answer has been sent to your parent.",
+    });
+    setQuestions(prev => prev.map(q => q.id === questionId ? {...q, answered: true} : q));
+  }
+
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
@@ -60,12 +80,6 @@ function StudentPageContent() {
                <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href="/?tab=study-room"><LayoutDashboard className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Room</Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/?tab=quiz-maker"><HelpCircleIcon className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Quiz Maker</Link>
-              </Button>
-               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
-                <Link href="/?tab=key-points"><Sparkles className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Key Points</Link>
-              </Button>
             </nav>
           </div>
           <div className="space-y-2">
@@ -87,6 +101,16 @@ function StudentPageContent() {
               Ready to ace your studies? Let's get started.
             </p>
           </div>
+          
+          {questions.some(q => !q.answered) && (
+            <Alert className="mb-6 border-accent/50 text-accent-foreground [&>svg]:text-accent">
+                <MessageCircleQuestion className="h-4 w-4" />
+                <AlertTitle className="font-headline text-lg">You have new questions!</AlertTitle>
+                <AlertDescription>
+                   Your parent has sent you some questions to check your understanding. See them in the "Crosscheck" section below.
+                </AlertDescription>
+            </Alert>
+          )}
 
           <section className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access to AI Tools</h2>
@@ -107,14 +131,41 @@ function StudentPageContent() {
                 ))}
             </div>
           </section>
-          
-          <div className="mt-8 p-6 bg-card rounded-lg shadow-lg border border-border/60">
-            <h3 className="text-lg font-semibold text-foreground">What's Next?</h3>
-            <p className="text-muted-foreground mt-2 text-sm">
-              Use the quick access links above or the main navigation to jump into a feature.
-              Your Study Room is now available on the main page for easier access to all your materials.
-            </p>
-          </div>
+
+           <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
+            <CardHeader>
+                <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
+                    <MessageCircleQuestion className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+                    Crosscheck Questions from Parents
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
+                    Answer these questions to show your parents what you've learned. (Realtime updates require backend setup)
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {questions.length > 0 ? questions.map(q => (
+                <Card key={q.id} className={`p-4 ${q.answered ? 'bg-muted/60' : ''}`}>
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <div>
+                      <p className={`text-base font-medium ${q.answered ? 'line-through text-muted-foreground' : ''}`}>{q.text}</p>
+                      <p className="text-xs text-muted-foreground">Asked by: {q.askedBy}</p>
+                    </div>
+                    {q.answered ? (
+                      <div className="flex items-center text-green-600 font-medium text-sm">
+                        <Check className="h-4 w-4 mr-1.5" /> Answered
+                      </div>
+                    ) : (
+                      <Button size="sm" onClick={() => handleAnswerQuestion(q.id)}>
+                        Answer Question
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              )) : (
+                <p className="text-center text-muted-foreground text-sm py-4">No questions from your parents at the moment.</p>
+              )}
+            </CardContent>
+          </Card>
 
         </main>
       </div>
