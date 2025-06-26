@@ -106,13 +106,16 @@ export default function LoginPage() {
     } catch (error: any) {
         console.error("Sign up error:", error);
         let errorMessage = "An unknown error occurred during sign up.";
-        if (error.code === 'auth/configuration-not-found') {
+        const errorCode = error.code || "";
+        const errorMsg = error.message || "";
+
+        if (errorCode.includes('auth/configuration-not-found') || errorMsg.includes('configuration-not-found')) {
              errorMessage = "Firebase configuration is missing or invalid. Please check your .env.local file and restart the development server.";
-        } else if ((error.code && String(error.code).includes('api-key')) || (error.message && String(error.message).includes('api-key'))) {
+        } else if (errorCode.includes('auth/api-key-not-valid') || errorMsg.includes('api-key')) {
           errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
-        } else if (error.code === 'auth/email-already-in-use') {
+        } else if (errorCode === 'auth/email-already-in-use') {
             errorMessage = "This email address is already in use.";
-        } else if (error.code === 'auth/weak-password') {
+        } else if (errorCode === 'auth/weak-password') {
             errorMessage = "The password is too weak. Please use at least 6 characters.";
         } else if (error.message) {
             errorMessage = error.message;
@@ -144,14 +147,17 @@ export default function LoginPage() {
     } catch (error: any) {
         console.error("Login error:", error);
         let errorMessage = "An unknown error occurred.";
-        if (error.code === 'auth/configuration-not-found') {
+        const errorCode = error.code || "";
+        const errorMsg = error.message || "";
+        
+        if (errorCode.includes('auth/configuration-not-found') || errorMsg.includes('configuration-not-found')) {
           errorMessage = "Firebase configuration is missing or invalid. Please check your .env.local file and restart the development server.";
-        } else if ((error.code && String(error.code).includes('api-key')) || (error.message && String(error.message).includes('api-key'))) {
+        } else if (errorCode.includes('auth/api-key-not-valid') || errorMsg.includes('api-key')) {
           errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
-        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        } else if (errorCode === 'auth/wrong-password' || errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-credential') {
             errorMessage = "Invalid email or password. Please try again.";
         } else {
-           errorMessage = "Invalid email or password. Please try again.";
+           errorMessage = "An unexpected login error occurred. Please try again.";
         }
         toast({
             title: "Login Failed",
