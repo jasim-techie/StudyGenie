@@ -9,9 +9,9 @@ import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 
 const navLinks = [
-  { href: "/study-plan", label: "Study Plan", icon: BookOpen },
-  { href: "/quiz-maker", label: "Quiz Maker", icon: HelpCircleIcon },
-  { href: "/key-points", label: "Key Points", icon: Sparkles },
+  { href: "/?tab=study-plan", label: "Study Plan", icon: BookOpen },
+  { href: "/?tab=quiz-maker", label: "Quiz Maker", icon: HelpCircleIcon },
+  { href: "/?tab=key-points", label: "Key Points", icon: Sparkles },
   { href: "/dashboard/student", label: "Student Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/parent", label: "Parent Dashboard", icon: UserCircle },
 ];

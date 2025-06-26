@@ -36,14 +36,31 @@ const prompt = ai.definePrompt({
   name: 'suggestLearningResourcesPrompt',
   input: {schema: SuggestLearningResourcesInputSchema},
   output: {schema: SuggestLearningResourcesOutputSchema},
-  prompt: `You are an AI assistant designed to suggest learning resources for students.
+  prompt: `You are an AI assistant expert at finding high-quality, real-world learning resources for students.
 
   Given the subject: {{{subject}}}
   And the following topics: {{#each topics}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 
-  Suggest a list of learning resources, that will help the user study the material.
-  These learning resources can be links to websites, specific books, or other study materials.
-  Format your response as a JSON array of strings.
+  Suggest a list of 5-7 learning resources that will help the user study the material.
+
+  **CRITICAL INSTRUCTIONS:**
+  1.  **Prioritize Real URLs:** Provide real, direct URLs to videos and articles. The links should be from reputable educational sources.
+  2.  **Reputable Sources:** Focus on sources like YouTube (from channels like Khan Academy, CrashCourse, Organic Chemistry Tutor, etc.), Byjus, Wikipedia, Khan Academy's website, and other well-known, trusted educational platforms.
+  3.  **Mix of Content:** Include a mix of video links (e.g., from YouTube) and article/interactive links where possible.
+  4.  **No Generic Books:** Do not suggest generic book titles. If you suggest a book, it must be a specific, well-known textbook for that subject.
+  5.  **Format:** Format your response as a JSON array of strings, where each string is a resource (ideally a direct URL).
+
+  Example for "Calculus" topic "Limits":
+  {
+    "resourceSuggestions": [
+      "https://www.khanacademy.org/math/calculus-1/cs1-limits-and-continuity",
+      "https://www.youtube.com/watch?v=riXcZT2Jpds",
+      "https://en.wikipedia.org/wiki/Limit_of_a_function",
+      "https://byjus.com/maths/limits/"
+    ]
+  }
+
+  JSON Output:
   `,
 });
 

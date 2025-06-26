@@ -43,26 +43,26 @@ const keyPointsPrompt = ai.definePrompt({
   **Task:**
   Analyze the content above and generate a structured list of key points suitable for a {{markWeightage}}-mark answer.
 
-  **Rules:**
-  1.  **Strict Point Count:** The total number of key points across all topics MUST match the mark weightage exactly as follows:
-      *   **20 marks:** 15 points total.
-      *   **16 marks:** 12 points total.
-      *   **12 marks:** 10 points total.
-      *   **10 marks:** 8 points total.
-      *   **8 marks:** 7 points total.
-      *   **4 marks:** 4 points total.
-      *   **2 marks:** 2 points total.
-  2.  **Expand Content:** If the provided text is too short or lacks detail, you MUST expand on the topics using your own knowledge to meet the required point count. DO NOT state that the content is insufficient.
-  3.  **Identify Topics:** Group the points under relevant topic headings. You should infer these headings from the content or create logical ones if none are obvious.
-  4.  **JSON Format:** The entire output must be a single, valid JSON object matching the required schema. It must have a root key "keyPoints" which is an array of objects. Each object must have a "topic" (string) and a "points" (array of strings).
+  **CRITICAL RULES - YOU MUST FOLLOW THESE:**
+  1.  **Strict Point Count:** The total number of points across all topics MUST EXACTLY match the number required for the mark weightage. This is a strict command, not a suggestion.
+      *   **20 marks:** YOU MUST PROVIDE EXACTLY 15 points.
+      *   **16 marks:** YOU MUST PROVIDE EXACTLY 12 points.
+      *   **12 marks:** YOU MUST PROVIDE EXACTLY 10 points.
+      *   **10 marks:** YOU MUST PROVIDE EXACTLY 8 points.
+      *   **8 marks:** YOU MUST PROVIDE EXACTLY 7 points.
+      *   **4 marks:** YOU MUST PROVIDE EXACTLY 4 points.
+      *   **2 marks:** YOU MUST PROVIDE EXACTLY 2 points.
+  2.  **Content Expansion is Mandatory:** If the provided text is too short or lacks detail to meet the required point count, you MUST expand on the topics using your own knowledge. DO NOT state that the content is insufficient. Generate the required number of points no matter what.
+  3.  **Identify and Group by Topics:** Group the points under relevant topic headings. You should infer these headings from the content or create logical ones if none are obvious. Every point must belong to a topic.
+  4.  **JSON Format Only:** The entire output must be a single, valid JSON object matching the required schema. It must have a root key "keyPoints" which is an array of objects. Each object must have a "topic" (string) and a "points" (array of strings).
 
-  **Example Output for a 12-mark request (10 points):**
+  **Example Output for a 12-mark request (10 points required):**
   {
     "keyPoints": [
       {
         "topic": "Topic One",
         "points": [
-          "Point A about topic one.",
+          "Point A about topic one, expanded from source or general knowledge.",
           "Point B about topic one.",
           "Point C about topic one."
         ]
@@ -71,7 +71,7 @@ const keyPointsPrompt = ai.definePrompt({
         "topic": "Topic Two",
         "points": [
           "Point D about topic two.",
-          "Point E about topic two.",
+          "Point E about topic two, expanded if necessary.",
           "Point F about topic two.",
           "Point G about topic two."
         ]

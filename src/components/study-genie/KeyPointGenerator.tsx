@@ -23,7 +23,7 @@ interface KeyPointGeneratorProps {
 
 export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGeneratorProps) {
   const [answerContent, setAnswerContent] = useState<string>("");
-  const [markWeightage, setMarkWeightage] = useState<number>(MARK_WEIGHTAGES[0]);
+  const [markWeightage, setMarkWeightage] = useState<number>(MARK_WEIGHTAGES[2]); // Default to 8 marks
   const [wordCount, setWordCount] = useState<number>(0);
   const [generatedKeyPoints, setGeneratedKeyPoints] = useState<GenerateKeyPointsOutput | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -88,9 +88,9 @@ export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGenerator
   };
 
   return (
-    <Card className="shadow-lg w-full max-w-3xl mx-auto">
+    <Card className="shadow-lg w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl flex items-center">
+        <CardTitle className="font-headline text-2xl md:text-3xl flex items-center">
           <Sparkles className="mr-2 h-6 w-6 text-primary" />
           Key Point Extractor
         </CardTitle>
@@ -138,12 +138,12 @@ export function KeyPointGenerator({ generateKeyPointsAction }: KeyPointGenerator
         <Button 
           onClick={handleSubmit} 
           disabled={isLoading || wordCount === 0 || wordCount > MAX_WORDS_KEY_POINTS || !!error} 
-          className="w-full text-base py-3"
+          className="w-full sm:w-auto text-base py-3 px-6"
         >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Generating Key Points...
+              Generating...
             </>
           ) : (
             <>
