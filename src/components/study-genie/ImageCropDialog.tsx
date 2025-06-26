@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import 'react-image-crop/dist/ReactCrop.css';
 import { useToast } from '@/hooks/use-toast';
+import { Check, X } from 'lucide-react';
 
 interface ImageCropDialogProps {
   isOpen: boolean;
@@ -104,8 +105,14 @@ export function ImageCropDialog({ isOpen, onClose, imageSrc, onCropComplete }: I
             </ReactCrop>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleCrop}>Crop and Extract Text</Button>
+          <Button variant="outline" onClick={onClose}>
+            <X className="mr-2 h-4 w-4" />
+            Cancel
+          </Button>
+          <Button onClick={handleCrop}>
+            <Check className="mr-2 h-4 w-4" />
+            Crop & Extract
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
