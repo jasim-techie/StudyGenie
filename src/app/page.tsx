@@ -12,11 +12,12 @@ import { PdfExportButton } from "@/components/study-genie/PdfExportButton";
 import { QuizGenerator } from "@/components/study-genie/QuizGenerator";
 import { QuizDisplay } from "@/components/study-genie/QuizDisplay";
 import { KeyPointGenerator } from "@/components/study-genie/KeyPointGenerator";
+import { StudyRoom } from "@/components/study-genie/StudyRoom";
 import { handleGenerateStudyPlan, handleCreateQuiz, handleGenerateKeyPoints } from "./actions";
 import type { StudyPlanFormValues, GeneratedStudyScheduleOutput, SuggestedLearningResourcesOutput, CreatedQuizOutput, GenerateKeyPointsOutput } from "@/lib/types";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, BookCopy, HelpCircleIcon, Sparkles } from "lucide-react";
+import { Loader2, BookCopy, HelpCircleIcon, Sparkles, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function HomePageContent() {
@@ -42,7 +43,7 @@ function HomePageContent() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab === 'quiz-maker' || tab === 'key-points') {
+    if (tab === 'quiz-maker' || tab === 'key-points' || tab === 'study-room') {
       setActiveTab(tab);
     } else {
       setActiveTab('study-plan');
@@ -93,9 +94,12 @@ function HomePageContent() {
         </section>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-12 md:w-fit mx-auto mb-8">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 h-auto sm:h-12 md:w-fit mx-auto mb-8">
             <TabsTrigger value="study-plan" className="text-base py-2.5 h-full">
               <BookCopy className="mr-2 h-5 w-5" /> Study Plan Generator
+            </TabsTrigger>
+             <TabsTrigger value="study-room" id="study-room" className="text-base py-2.5 h-full">
+              <LayoutDashboard className="mr-2 h-5 w-5" /> Study Room
             </TabsTrigger>
             <TabsTrigger value="quiz-maker" id="quiz-maker" className="text-base py-2.5 h-full">
               <HelpCircleIcon className="mr-2 h-5 w-5" /> Quiz Maker
@@ -125,6 +129,12 @@ function HomePageContent() {
                   </div>
                 )}
               </div>
+          </TabsContent>
+
+           <TabsContent value="study-room">
+            <div className="space-y-8 max-w-5xl mx-auto">
+              <StudyRoom />
+            </div>
           </TabsContent>
 
           <TabsContent value="quiz-maker">

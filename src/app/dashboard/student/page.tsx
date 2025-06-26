@@ -3,17 +3,16 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/study-genie/Header";
-import { StudyRoom } from "@/components/study-genie/StudyRoom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, FileQuestion, HelpCircleIcon, Home, LayoutDashboard, LogOut, Settings, Sparkles, User, BrainCircuit, Loader2 } from "lucide-react";
+import { User, Home, BookOpen, HelpCircleIcon, Sparkles, LayoutDashboard, Settings, LogOut, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const quickLinks = [
   { name: "New Study Plan", href: "/?tab=study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
+  { name: "Study Room", href: "/?tab=study-room", icon: LayoutDashboard, description: "Organize your notes and track progress." },
   { name: "Quiz Maker", href: "/?tab=quiz-maker", icon: HelpCircleIcon, description: "Test your knowledge from notes." },
   { name: "Key Point Extractor", href: "/?tab=key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
@@ -58,6 +57,9 @@ function StudentPageContent() {
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href="/?tab=study-plan"><BookOpen className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Plan AI</Link>
               </Button>
+               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
+                <Link href="/?tab=study-room"><LayoutDashboard className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Study Room</Link>
+              </Button>
               <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href="/?tab=quiz-maker"><HelpCircleIcon className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Quiz Maker</Link>
               </Button>
@@ -88,7 +90,7 @@ function StudentPageContent() {
 
           <section className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access to AI Tools</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {quickLinks.map(link => (
                 <Card key={link.name} className="hover:shadow-lg transition-shadow duration-200 ease-in-out border-border/70 bg-card/80 backdrop-blur-sm">
                     <CardHeader className="pb-3">
@@ -106,7 +108,13 @@ function StudentPageContent() {
             </div>
           </section>
           
-          <StudyRoom />
+          <div className="mt-8 p-6 bg-card rounded-lg shadow-lg border border-border/60">
+            <h3 className="text-lg font-semibold text-foreground">What's Next?</h3>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Use the quick access links above or the main navigation to jump into a feature.
+              Your Study Room is now available on the main page for easier access to all your materials.
+            </p>
+          </div>
 
         </main>
       </div>
