@@ -113,6 +113,8 @@ export default function LoginPage() {
              errorMessage = "Firebase configuration is missing or invalid. Please check your .env.local file and restart the development server.";
         } else if (errorCode.includes('auth/api-key-not-valid') || errorMsg.includes('api-key')) {
           errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
+        } else if (errorCode === 'auth/operation-not-allowed') {
+          errorMessage = "Email/Password sign-in is not enabled. Please enable it in the Firebase Console under Authentication > Sign-in method.";
         } else if (errorCode === 'auth/email-already-in-use') {
             errorMessage = "This email address is already in use.";
         } else if (errorCode === 'auth/weak-password') {
@@ -154,6 +156,8 @@ export default function LoginPage() {
           errorMessage = "Firebase configuration is missing or invalid. Please check your .env.local file and restart the development server.";
         } else if (errorCode.includes('auth/api-key-not-valid') || errorMsg.includes('api-key')) {
           errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
+        } else if (errorCode === 'auth/operation-not-allowed') {
+            errorMessage = "Email/Password sign-in is not enabled for this project. Please check your Firebase Console settings.";
         } else if (errorCode === 'auth/wrong-password' || errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-credential') {
             errorMessage = "Invalid email or password. Please try again.";
         } else {
