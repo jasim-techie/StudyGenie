@@ -58,6 +58,10 @@ export default function LoginPage() {
       toast({ title: "Name Required", description: "Please enter your full name.", variant: "destructive" });
       return;
     }
+    if (!auth || !db) {
+        toast({ title: "Firebase Not Configured", description: "Please ensure your Firebase credentials are correct in .env.local", variant: "destructive" });
+        return;
+    }
 
     setIsLoading(true);
     try {
@@ -102,7 +106,9 @@ export default function LoginPage() {
     } catch (error: any) {
         console.error("Sign up error:", error);
         let errorMessage = "An unknown error occurred during sign up.";
-        if (error.code === 'auth/email-already-in-use') {
+        if (error.code === 'auth/invalid-api-key' || (error.message && error.message.includes('api-key-not-valid'))) {
+          errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
+        } else if (error.code === 'auth/email-already-in-use') {
             errorMessage = "This email address is already in use.";
         } else if (error.code === 'auth/weak-password') {
             errorMessage = "The password is too weak. Please use at least 6 characters.";
@@ -120,6 +126,10 @@ export default function LoginPage() {
   };
 
   const handleLogin = async () => {
+    if (!auth) {
+        toast({ title: "Firebase Not Configured", description: "Please ensure your Firebase credentials are correct in .env.local", variant: "destructive" });
+        return;
+    }
     setIsLoading(true);
     try {
         await setPersistence(auth, browserSessionPersistence);
@@ -131,9 +141,17 @@ export default function LoginPage() {
         // The useEffect will handle the redirect
     } catch (error: any) {
         console.error("Login error:", error);
+        let errorMessage = "An unknown error occurred.";
+        if (error.code === 'auth/invalid-api-key' || (error.message && error.message.includes('api-key-not-valid'))) {
+          errorMessage = "Your Firebase API Key is not valid. Please check your .env.local file and restart the development server.";
+        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+            errorMessage = "Invalid email or password. Please try again.";
+        } else {
+           errorMessage = "Invalid email or password. Please try again.";
+        }
         toast({
             title: "Login Failed",
-            description: "Invalid email or password. Please try again.",
+            description: errorMessage,
             variant: "destructive",
         });
     } finally {
