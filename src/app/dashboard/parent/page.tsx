@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Users, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, CheckCircle2, Brain, Search, Loader2, Send, Clock } from "lucide-react";
+import { BarChart3, Users, FileQuestion, Home, LogOut, MessageCircleQuestion, Settings, User, CheckCircle2, Brain, Search, Loader2, Send, Clock, Link as LinkIcon } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { collection, doc, getDoc, onSnapshot, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { collection, doc, onSnapshot, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import type { StudyRoomSubject, UserProfile, CrosscheckQuestion, UploadedFile, CrosscheckAnswer } from "@/lib/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 function ParentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   
   const [studentProfile, setStudentProfile] = useState<UserProfile | null>(null);
   const [subjects, setSubjects] = useState<StudyRoomSubject[]>([]);
@@ -32,12 +32,25 @@ function ParentPageContent() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [crosscheckHistory, setCrosscheckHistory] = useState<CrosscheckQuestion[]>([]);
 
+  useEffect(() => {
+    if (authLoading) return; // Wait for authentication to resolve
+    if (!user) {
+      router.push('/login'); // Redirect if not logged in
+      return;
+    }
+    // Continue with data fetching if user is logged in
+  }, [user, authLoading, router]);
 
   // Effect for fetching student profile and study progress
   useEffect(() => {
-    if (userProfile?.role !== 'parent' || !userProfile.linkedStudent) {
+    if (userProfile?.role !== 'parent') {
       setIsLoadingData(false);
       return;
+    }
+
+    if (!userProfile.linkedStudent) {
+      setIsLoadingData(false);
+      return; // Parent is not linked to any student
     }
     
     const studentId = userProfile.linkedStudent;
@@ -47,6 +60,8 @@ function ParentPageContent() {
     const studentUnsubscribe = onSnapshot(studentDocRef, (docSnap) => {
       if (docSnap.exists()) {
         setStudentProfile(docSnap.data() as UserProfile);
+      } else {
+        setStudentProfile(null);
       }
     });
 
@@ -168,18 +183,46 @@ function ParentPageContent() {
   };
 
   const getInitials = (name: string) => {
+    if (!name) return "";
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
 
 
-  if (isLoadingData) {
+  if (authLoading || isLoadingData) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Loading Student Data...</p>
+        <p className="ml-4 text-lg">Loading Dashboard...</p>
       </div>
     );
   }
+  
+  if (!userProfile?.linkedStudent) {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+            <Card className="max-w-md w-full text-center">
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center justify-center gap-2">
+                        <LinkIcon className="h-6 w-6 text-primary" />
+                        Link to a Student Account
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">
+                        Your parent account is not yet linked to a student. To view progress, please sign up again using your child's 6-digit <Badge variant="outline">Family Code</Badge>.
+                    </p>
+                </CardContent>
+                <CardFooter className="flex-col gap-4">
+                    <Button asChild className="w-full">
+                        <Link href="/login">Go to Login/Sign Up</Link>
+                    </Button>
+                    <Button variant="ghost" onClick={handleLogout}>Logout</Button>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
@@ -233,7 +276,7 @@ function ParentPageContent() {
                   </CardHeader>
                   <CardContent className="space-y-4 sm:space-y-6">
                     {!studentProfile ? (
-                        <p className="text-muted-foreground text-center py-4">No student linked. Please sign up with a valid family code.</p>
+                        <p className="text-muted-foreground text-center py-4">Could not load student data.</p>
                     ) : subjects.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">{studentProfile.name} has not added any subjects yet.</p>
                     ) : (

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircle, UploadCloud, FileText, Trash2, BookOpen, FileUp, AlertTriangle, GripVertical, Loader2 } from "lucide-react";
+import { PlusCircle, UploadCloud, FileText, Trash2, BookOpen, FileUp, GripVertical, Loader2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +27,12 @@ export function StudyRoom() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
 
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
+    if (authLoading) return; // Wait until authentication state is resolved
     if (!user) {
       setIsLoading(false);
       return;
@@ -41,7 +42,6 @@ export function StudyRoom() {
     let fileUnsubscribers: (() => void)[] = [];
 
     const subjectsUnsubscribe = onSnapshot(subjectsQuery, (subjectsSnapshot) => {
-        // Unsubscribe from all previous file listeners to prevent memory leaks
         fileUnsubscribers.forEach(unsub => unsub());
         fileUnsubscribers = [];
         
@@ -61,14 +61,21 @@ export function StudyRoom() {
                 const filesData = filesSnapshot.docs.map(fileDoc => ({ id: fileDoc.id, ...fileDoc.data() } as UploadedFile));
                 setSubjects(currentSubjects => {
                     const subjectExists = currentSubjects.some(s => s.id === subjectDoc.id);
-                    if (!subjectExists) return currentSubjects; // Avoid updates if subject was removed
+                    if (!subjectExists) return currentSubjects; 
                     return currentSubjects.map(s => s.id === subjectDoc.id ? { ...s, files: filesData } : s);
                 });
+            }, (error) => {
+                console.error(`Error fetching files for subject ${subjectDoc.id}:`, error);
+                toast({ title: "Error", description: "Could not load files for a subject.", variant: "destructive" });
             });
             fileUnsubscribers.push(filesUnsubscribe);
         });
 
         setSubjects(newSubjects);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching subjects:", error);
+        toast({ title: "Error", description: "Could not load your subjects. Check your connection or permissions.", variant: "destructive" });
         setIsLoading(false);
     });
 
@@ -76,7 +83,7 @@ export function StudyRoom() {
         subjectsUnsubscribe();
         fileUnsubscribers.forEach(unsub => unsub());
     };
-  }, [user]);
+  }, [user, authLoading, toast]);
 
 
   const handleAddSubject = async () => {
@@ -103,9 +110,8 @@ export function StudyRoom() {
     if (!confirm(`Are you sure you want to delete the subject "${subjectName}" and all its files? This cannot be undone.`)) return;
 
     try {
-      // Note: This only deletes the Firestore record. Deleting all files in Storage
-      // should ideally be handled by a Cloud Function triggered on document deletion
-      // to ensure atomicity and prevent orphaned files.
+      // NOTE: Deleting a collection from the client-side is not recommended for production.
+      // A Cloud Function triggered on document deletion is the robust way to handle this.
       const subjectDocRef = doc(db, `users/${user.uid}/subjects`, subjectId);
       await deleteDoc(subjectDocRef);
       toast({ title: "Subject Removed", description: `"${subjectName}" has been removed.`});
@@ -125,8 +131,7 @@ export function StudyRoom() {
     if (!file) return;
 
     setIsUploading(prev => ({ ...prev, [subjectId]: true }));
-
-    const storageRef = ref(storage, `users/${user.uid}/subjects/${subjectName}/${file.name}-${Date.now()}`);
+    const storageRef = ref(storage, `users/${user.uid}/subjects/${subjectId}/${file.name}-${Date.now()}`);
 
     try {
       const uploadResult = await uploadBytes(storageRef, file);
@@ -154,11 +159,9 @@ export function StudyRoom() {
   const handleRemoveFile = async (subjectId: string, file: UploadedFile) => {
     if (!user) return;
     try {
-      // Delete from Storage
       const fileRef = ref(storage, file.firebaseStorageUrl);
       await deleteObject(fileRef);
 
-      // Delete from Firestore
       const fileDocRef = doc(db, `users/${user.uid}/subjects/${subjectId}/files`, file.id);
       await deleteDoc(fileDocRef);
 
@@ -180,7 +183,7 @@ export function StudyRoom() {
     if (type === 'pdf') return <FileText className="h-5 w-5 text-red-600" />;
     if (['ppt', 'pptx'].includes(type || '')) return <FileText className="h-5 w-5 text-orange-500" />;
     if (['doc', 'docx'].includes(type || '')) return <FileText className="h-5 w-5 text-blue-600" />;
-    if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(type || '')) return <FileText className="h-5 w-5 text-green-600" />; // Could use ImageIcon
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(type || '')) return <FileText className="h-5 w-5 text-green-600" />;
     if (type === 'txt') return <FileText className="h-5 w-5 text-gray-700" />;
     return <FileText className="h-5 w-5 text-muted-foreground" />;
   };
@@ -193,7 +196,7 @@ export function StudyRoom() {
     return `${truncatedBaseName}...${extension}`;
   }
   
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 

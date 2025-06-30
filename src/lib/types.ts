@@ -25,8 +25,8 @@ export interface UploadedFile {
 export interface StudyRoomSubject {
   id: string; // Firestore document ID
   name:string;
-  files: UploadedFile[];
-  createdAt: Timestamp;
+  files?: UploadedFile[];
+  createdAt?: Timestamp;
 }
 
 // --- Cross-check (Parent-Student Questions) ---
@@ -121,3 +121,5 @@ export interface GenerateKeyPointsOutput {
     points: string[];
   }>;
 }
+
+    

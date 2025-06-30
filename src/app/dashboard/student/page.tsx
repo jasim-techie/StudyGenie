@@ -13,7 +13,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import type { CrosscheckQuestion } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,13 +30,21 @@ type QuestionWithStatus = CrosscheckQuestion & { answered: boolean };
 function StudentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   
   const [questions, setQuestions] = useState<QuestionWithStatus[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<QuestionWithStatus | null>(null);
   const [answer, setAnswer] = useState("");
   const [isAnswering, setIsAnswering] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth to finish
+    if (!user) {
+      router.push('/login'); // Redirect if not logged in
+    }
+  }, [user, authLoading, router]);
+
 
   useEffect(() => {
     if (userProfile?.role !== 'student' || !userProfile.familyCode || !user?.uid) {
@@ -119,10 +127,7 @@ function StudentPageContent() {
         answeredAt: serverTimestamp(),
       });
       
-      // Also update the question doc to indicate it's answered to trigger parent UI maybe
-      // For now, parent UI just checks for existence of answer doc.
-
-      toast({ title: "Answer Submitted!", description: "Your answer has been sent to your parent." });
+      toast({ title: "Answer Submitted!", description: "Your answer has been sent." });
       setActiveQuestion(null);
       setAnswer("");
     } catch (error) {
@@ -132,6 +137,15 @@ function StudentPageContent() {
       setIsAnswering(false);
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading Dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <>
