@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -37,9 +38,23 @@ export default function AuthPage() {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Login Successful", description: "Welcome back!" });
         router.push('/dashboard');
-      } catch (error) {
-        console.error("Login error:", error);
-        toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
+      } catch (error: any) {
+        console.error("Login error:", error.code);
+        let description = "An unknown error occurred. Please try again.";
+        
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            description = "Invalid email or password. Please check your credentials and try again.";
+        } else if (error.code === 'auth/user-disabled') {
+            description = "This account has been disabled. Please contact support.";
+        } else if (error.code === 'auth/invalid-email') {
+            description = "The email address is not valid.";
+        }
+
+        toast({ 
+            title: "Login Failed", 
+            description: description, 
+            variant: "destructive" 
+        });
       } finally {
         setIsLoading(false);
       }
@@ -60,7 +75,6 @@ export default function AuthPage() {
             name: fullName,
             email: user.email,
             createdAt: serverTimestamp(),
-            familyCode: crypto.randomUUID().substring(0, 8).toUpperCase(),
         };
         
         // Save student profile to 'students' collection in Firestore
