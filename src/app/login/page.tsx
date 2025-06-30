@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, UserPlus, LogIn, BrainCircuit, Eye, EyeOff, Loader2 } from "lucide-react";
+import { UserPlus, LogIn, BrainCircuit, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -59,15 +58,16 @@ export default function AuthPage() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // All users are students now
-        const userDocData = {
+        // Create student profile data
+        const studentDocData = {
             uid: user.uid,
             name: fullName,
             email: user.email,
             createdAt: serverTimestamp(),
         };
         
-        await setDoc(doc(db, "users", user.uid), userDocData);
+        // Save student profile to 'students' collection in Firestore
+        await setDoc(doc(db, "students", user.uid), studentDocData);
         toast({ title: "Account Created!", description: "You have been successfully signed up." });
         router.push('/dashboard');
 

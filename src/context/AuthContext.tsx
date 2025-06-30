@@ -1,17 +1,16 @@
-
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
-import type { UserProfile } from '@/lib/types';
+import type { StudentProfile } from '@/lib/types';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface AuthContextType {
   user: User | null;
-  userProfile: UserProfile | null;
+  userProfile: StudentProfile | null;
   loading: boolean; // Represents ONLY the initial auth check
 }
 
@@ -19,7 +18,7 @@ const AuthContext = createContext<AuthContextType>({ user: null, userProfile: nu
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true); // This now tracks only the initial onAuthStateChanged call
 
   useEffect(() => {
@@ -39,17 +38,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(authUser);
 
       if (authUser) {
-        // User is logged in, listen for their profile document
-        const userDocRef = doc(db, 'users', authUser.uid);
+        // User is logged in, listen for their profile document from the 'students' collection
+        const userDocRef = doc(db, 'students', authUser.uid);
         unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
+            setUserProfile(docSnap.data() as StudentProfile);
           } else {
-            console.warn("User profile not found in Firestore for UID:", authUser.uid);
+            console.warn("Student profile not found in Firestore for UID:", authUser.uid);
             setUserProfile(null);
           }
         }, (error) => {
-          console.error("Error listening to user profile:", error);
+          console.error("Error listening to student profile:", error);
           setUserProfile(null);
         });
       } else {

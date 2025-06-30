@@ -1,8 +1,7 @@
-
 import type { Timestamp } from "firebase/firestore";
 
-// --- User Authentication & Profile ---
-export interface UserProfile {
+// --- Student Profile ---
+export interface StudentProfile {
   uid: string;
   name: string;
   email: string;
