@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 function ParentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile } = useAuth();
   
   const [studentProfile, setStudentProfile] = useState<UserProfile | null>(null);
   const [subjects, setSubjects] = useState<StudyRoomSubject[]>([]);
@@ -32,36 +32,24 @@ function ParentPageContent() {
   const [crosscheckHistory, setCrosscheckHistory] = useState<CrosscheckQuestion[]>([]);
 
   useEffect(() => {
-    if (authLoading) return; // Wait for authentication to resolve
     if (!user) {
-      router.push('/login'); // Redirect if not logged in
+      router.push('/login');
       return;
     }
-  }, [user, authLoading, router]);
-
-  // Effect for fetching student profile and study progress
-  useEffect(() => {
-    if (authLoading) return; // Explicitly wait for auth to complete
-
+    
     if (userProfile?.role !== 'parent' || !userProfile.linkedStudent) {
       setStudentProfile(null);
       setSubjects([]);
-      return; // Parent is not linked to any student or user is not a parent
+      return;
     }
     
     const studentId = userProfile.linkedStudent;
 
-    // Fetch student profile once
     const studentDocRef = doc(db, 'users', studentId);
     const studentUnsubscribe = onSnapshot(studentDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setStudentProfile(docSnap.data() as UserProfile);
-      } else {
-        setStudentProfile(null);
-      }
+      setStudentProfile(docSnap.exists() ? docSnap.data() as UserProfile : null);
     });
 
-    // Listen for subjects and their files
     const subjectsColRef = collection(db, `users/${studentId}/subjects`);
     let fileUnsubscribers: (() => void)[] = [];
 
@@ -89,6 +77,9 @@ function ParentPageContent() {
         fileUnsubscribers.push(filesUnsubscribe);
       });
       setSubjects(newSubjects);
+    }, (error) => {
+      console.error("Error fetching subjects: ", error);
+      toast({ title: "Permission Error", description: "Could not fetch subjects. Please ensure Firestore rules allow parent access.", variant: "destructive"});
     });
 
     return () => {
@@ -96,11 +87,11 @@ function ParentPageContent() {
       subjectsUnsubscribe();
       fileUnsubscribers.forEach(unsub => unsub());
     };
-  }, [userProfile, authLoading]);
+  }, [user, userProfile, router, toast]);
 
   // Effect for fetching cross-check history
   useEffect(() => {
-    if (authLoading || !studentProfile?.familyCode) return;
+    if (!studentProfile?.familyCode) return;
     
     const questionsQuery = query(collection(db, `crosscheck/${studentProfile.familyCode}/questions`), orderBy("askedAt", "desc"));
     let answerUnsubscribers: Record<string, () => void> = {};
@@ -135,7 +126,7 @@ function ParentPageContent() {
         questionsUnsubscribe();
         Object.values(answerUnsubscribers).forEach(unsub => unsub());
     };
-}, [studentProfile, authLoading]);
+}, [studentProfile]);
 
 
   const handleLogout = async () => {
@@ -181,16 +172,6 @@ function ParentPageContent() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
 
-
-  if (authLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Loading Dashboard...</p>
-      </div>
-    );
-  }
-  
   if (!userProfile?.linkedStudent) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">

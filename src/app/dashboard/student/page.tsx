@@ -30,7 +30,7 @@ type QuestionWithStatus = CrosscheckQuestion & { answered: boolean };
 function StudentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile } = useAuth();
   
   const [questions, setQuestions] = useState<QuestionWithStatus[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<QuestionWithStatus | null>(null);
@@ -38,17 +38,12 @@ function StudentPageContent() {
   const [isAnswering, setIsAnswering] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return; // Wait for auth to finish
     if (!user) {
-      router.push('/login'); // Redirect if not logged in
+      router.push('/login');
+      return;
     }
-  }, [user, authLoading, router]);
 
-
-  useEffect(() => {
-    if (authLoading) return; // Explicitly wait for auth to complete
-
-    if (userProfile?.role !== 'student' || !userProfile.familyCode || !user?.uid) {
+    if (userProfile?.role !== 'student' || !userProfile.familyCode) {
         setQuestions([]);
         return;
     }
@@ -72,7 +67,7 @@ function StudentPageContent() {
 
         const fetchedQuestions = querySnapshot.docs.map(doc => ({
             id: doc.id,
-            answered: false, // Default value, will be updated by answer listener
+            answered: false,
             ...doc.data()
         } as QuestionWithStatus));
 
@@ -98,7 +93,7 @@ function StudentPageContent() {
         questionsUnsubscribe();
         Object.values(answerUnsubscribers).forEach(unsub => unsub());
     };
-  }, [userProfile, user, authLoading]);
+  }, [user, userProfile, router]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -137,15 +132,6 @@ function StudentPageContent() {
       setIsAnswering(false);
     }
   };
-
-  if (authLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Loading Dashboard...</p>
-      </div>
-    );
-  }
 
   return (
     <>
