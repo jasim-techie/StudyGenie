@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageIcon, Loader2, PlusCircle, Trash2, Crop, Check, X } from "lucide-react";
+import { CalendarIcon, BookOpen, ListChecks, CalendarDays, Clock, ImageIcon, Loader2, PlusCircle, Trash2, FileText } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ import { format } from "date-fns";
 import type { StudyPlanFormValues } from "@/lib/types";
 import { type ChangeEvent, useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { handleImageUploadForTopicExtraction } from "@/app/actions";
+import { handleImageUploadForTopicExtraction, handlePdfUploadForTextExtraction } from "@/app/actions";
 import { ImageCropDialog } from "./ImageCropDialog";
 
 const subjectEntrySchema = z.object({
@@ -52,8 +52,10 @@ interface StudyPlanFormProps {
 
 export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
   const [ocrLoadingStates, setOcrLoadingStates] = useState<Record<string, boolean>>({});
+  const [pdfLoadingStates, setPdfLoadingStates] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const pdfInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // State for the crop dialog
   const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
@@ -146,9 +148,53 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     }
   };
   
+  const handlePdfFileChange = async (subjectIndex: number, event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    const subjectId = fields[subjectIndex].id;
+
+    if (file) {
+      if (file.type !== "application/pdf") {
+        toast({ title: "Invalid File Type", description: "Please upload a PDF file for text extraction.", variant: "destructive" });
+        return;
+      }
+
+      setPdfLoadingStates(prev => ({ ...prev, [subjectId]: true }));
+      form.setValue(`subjects.${subjectIndex}.ocrTextPreview`, "Extracting text from PDF...");
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const pdfDataUri = reader.result as string;
+        const result = await handlePdfUploadForTextExtraction(pdfDataUri);
+        setPdfLoadingStates(prev => ({ ...prev, [subjectId]: false }));
+
+        if (result.error || !result.extractedText) {
+          const errorMessage = result.error || "Failed to extract text from PDF. The document might be image-based or empty.";
+          toast({ title: "PDF Extraction Error", description: errorMessage, variant: "destructive" });
+          form.setValue(`subjects.${subjectIndex}.ocrTextPreview`, `Error: ${errorMessage}`);
+        } else {
+          const currentTopics = form.getValues(`subjects.${subjectIndex}.topics`);
+          const newTopics = currentTopics && currentTopics.trim() !== ""
+            ? `${currentTopics}\n${result.extractedText}`
+            : result.extractedText;
+          
+          form.setValue(`subjects.${subjectIndex}.topics`, newTopics, { shouldValidate: true });
+          form.setValue(`subjects.${subjectIndex}.ocrTextPreview`, `Extracted ${result.extractedText.split(/\s+/).filter(Boolean).length} words from PDF.`);
+          toast({ title: "Text Extracted & Appended", description: `Topics have been populated from your PDF.` });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    if (event.target) event.target.value = "";
+  };
+  
   const triggerImageUpload = (subjectId: string) => {
     fileInputRefs.current[subjectId]?.click();
   };
+
+  const triggerPdfUpload = (subjectId: string) => {
+    pdfInputRefs.current[subjectId]?.click();
+  };
+
 
   async function handleSubmit(values: FormSchemaType) {
     if (!values.startDate || !values.examDate) {
@@ -159,7 +205,7 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
     for (let i = 0; i < values.subjects.length; i++) {
       const subject = values.subjects[i];
       if (!subject.topics || subject.topics.trim() === "") {
-        toast({ title: `Missing Topics for ${subject.name || `Subject ${i + 1}`}`, description: `Please enter topics or upload an image for topic extraction.`, variant: "destructive" });
+        toast({ title: `Missing Topics for ${subject.name || `Subject ${i + 1}`}`, description: `Please enter topics or upload a file for topic extraction.`, variant: "destructive" });
         return; 
       }
     }
@@ -167,6 +213,9 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
   }
   
   const totalOcrLoading = Object.values(ocrLoadingStates).some(loading => loading);
+  const totalPdfLoading = Object.values(pdfLoadingStates).some(loading => loading);
+  const totalProcessing = totalOcrLoading || totalPdfLoading;
+
 
   return (
     <>
@@ -182,6 +231,8 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
           {fields.map((field, index) => {
             const subjectId = field.id;
             const currentOcrLoading = ocrLoadingStates[subjectId] || false;
+            const currentPdfLoading = pdfLoadingStates[subjectId] || false;
+            const isProcessing = currentOcrLoading || currentPdfLoading;
             return (
               <Card key={field.id} className="shadow-md border border-border/70 p-0 transition-all duration-300 ease-in-out hover:shadow-lg">
                 <CardHeader className="bg-muted/30 p-4 rounded-t-lg border-b">
@@ -215,26 +266,33 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                     name={`subjects.${index}.topics`}
                     render={({ field: topicsField }) => (
                       <FormItem>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <FormLabel className="flex items-center text-base"><ListChecks className="mr-2 h-5 w-5 text-primary" />Topics</FormLabel>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => triggerImageUpload(subjectId)}
-                            disabled={currentOcrLoading || isLoading}
-                            className="ml-2"
-                          >
-                            {currentOcrLoading ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <ImageIcon className="mr-2 h-4 w-4" />
-                            )}
-                            Upload & Crop Image
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => triggerImageUpload(subjectId)}
+                              disabled={isProcessing || isLoading}
+                            >
+                              {currentOcrLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-2 h-4 w-4" />}
+                              Upload Image
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => triggerPdfUpload(subjectId)}
+                              disabled={isProcessing || isLoading}
+                            >
+                              {currentPdfLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                              Upload PDF
+                            </Button>
+                          </div>
                         </div>
                         <FormControl>
-                          <Textarea placeholder="Enter topics manually, separated by commas or new lines. Or, upload an image to extract topics." {...topicsField} rows={5} className="text-base mt-2"/>
+                          <Textarea placeholder="Enter topics manually, separated by commas or new lines. Or, upload an image/PDF to extract topics." {...topicsField} rows={5} className="text-base mt-2"/>
                         </FormControl>
                         <Input
                           type="file"
@@ -243,16 +301,23 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
                           ref={(el) => fileInputRefs.current[subjectId] = el}
                           onChange={(e) => handleFileSelectForCropping(index, e)}
                         />
-                        <FormDescription>Use the button to upload an image of your notes, crop the relevant area, and extract text.</FormDescription>
-                        {currentOcrLoading && (
+                         <Input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          ref={(el) => pdfInputRefs.current[subjectId] = el}
+                          onChange={(e) => handlePdfFileChange(index, e)}
+                        />
+                        <FormDescription>Use the buttons to upload a file to automatically populate topics.</FormDescription>
+                        {isProcessing && (
                           <div className="flex items-center space-x-2 mt-2 text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            <span>Extracting text...</span>
+                            <span>{currentOcrLoading ? 'Processing image...' : 'Processing PDF...'}</span>
                           </div>
                         )}
-                        {form.watch(`subjects.${index}.ocrTextPreview`) && !currentOcrLoading && (
+                        {form.watch(`subjects.${index}.ocrTextPreview`) && !isProcessing && (
                           <div className="mt-2 space-y-1">
-                            <p className="text-sm font-medium text-foreground">Last OCR Extraction Preview (Raw Text):</p>
+                            <p className="text-sm font-medium text-foreground">Last Extraction Preview:</p>
                             <Textarea readOnly value={form.watch(`subjects.${index}.ocrTextPreview`) || ""} rows={3} className="bg-muted/50 border-border/50 text-sm"/>
                           </div>
                         )}
@@ -375,11 +440,11 @@ export function StudyPlanForm({ onSubmit, isLoading }: StudyPlanFormProps) {
               </FormItem>
             )}
           />
-          <Button type="submit" disabled={isLoading || totalOcrLoading} className="w-full md:w-auto text-base py-3 px-6 h-auto transition-all duration-300 ease-in-out hover:shadow-lg focus:ring-4 focus:ring-primary/30">
+          <Button type="submit" disabled={isLoading || totalProcessing} className="w-full md:w-auto text-base py-3 px-6 h-auto transition-all duration-300 ease-in-out hover:shadow-lg focus:ring-4 focus:ring-primary/30">
             {isLoading ? (
               <> <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating Plan...</>
-            ) : totalOcrLoading ? (
-              <> <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing Image(s)...</>
+            ) : totalProcessing ? (
+              <> <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing File(s)...</>
             ) : (
               "Generate Study Plan"
             )}
