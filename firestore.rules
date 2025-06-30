@@ -1,82 +1,10 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // -- USER PROFILES --
-    match /users/{userId} {
-      // Anyone can create a user profile during signup IF they are authenticated
-      allow create: if request.auth != null && request.auth.uid == userId;
-      
-      // Users can read their own profile
-      // Parents can read their linked student's profile
-      allow read: if request.auth != null && (
-                    request.auth.uid == userId ||
-                    (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedStudent == userId)
-                  );
-
-      // Users can update their own profile (e.g., name).
-      // A parent can update their own doc to add a linkedStudentId.
-      allow update: if request.auth != null && request.auth.uid == userId;
-
-      // Users should not be able to delete their own accounts from the client
-      allow delete: if false;
-    }
-
-    // -- STUDY ROOM: SUBJECTS --
-    match /users/{userId}/subjects/{subjectId} {
-        // Students can manage their own subjects
-        // Parents can read their linked student's subjects
-        allow read: if request.auth != null && (
-                      request.auth.uid == userId ||
-                      (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedStudent == userId)
-                    );
-        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // -- STUDY ROOM: FILES --
-    match /users/{userId}/subjects/{subjectId}/files/{fileId} {
-        // Students can manage their own files
-        // Parents can read their linked student's files
-        allow read: if request.auth != null && (
-                      request.auth.uid == userId ||
-                      (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedStudent == userId)
-                    );
-        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // -- CROSS-CHECK QUESTIONS --
-    match /crosscheck/{familyCode}/questions/{questionId} {
-      // Anyone in the family (student or parent) can read questions
-      allow read: if request.auth != null &&
-                   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyCode == familyCode;
-
-      // Only parents can ask (create) questions
-      allow create: if request.auth != null &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent' &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyCode == familyCode;
-      
-      // Nobody can update/delete questions from client for simplicity
-      allow update, delete: if false;
-    }
-    
-    // -- CROSS-CHECK ANSWERS --
-    match /crosscheck/{familyCode}/questions/{questionId}/answers/{answerId} {
-      // Anyone in the family can read answers
-      allow read: if request.auth != null &&
-                   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyCode == familyCode;
-
-      // Only students can answer (create/update their own answer)
-      allow create, update: if request.auth != null &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student' &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyCode == familyCode &&
-                     request.auth.uid == answerId; // student's UID is the doc ID for the answer
-
-      // Students cannot delete their answers from the client
-      allow delete: if false;
+    // Student profiles can only be read or written by the user who owns them.
+    match /students/{studentId} {
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
     }
   }
 }

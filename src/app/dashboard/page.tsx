@@ -1,6 +1,7 @@
+
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -20,6 +21,13 @@ function StudentDashboardContent() {
   const { user, userProfile, loading, profileLoading } = useAuth();
   const router = useRouter();
 
+  useEffect(() => {
+    // If the initial auth check is done and there's still no user, then redirect.
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]); // Dependencies for the effect
+
   // 1. Show a generic loader while the initial auth check is running.
   if (loading) {
     return (
@@ -30,10 +38,15 @@ function StudentDashboardContent() {
     );
   }
 
-  // 2. If auth is checked and there's no user, redirect them to login.
+  // 2. If auth is checked and there's no user, show a redirecting state.
+  // The useEffect above will handle the actual redirect.
   if (!user) {
-    router.replace('/login');
-    return null; // Render nothing while redirecting
+     return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg font-medium text-foreground">Redirecting to login...</p>
+      </div>
+    );
   }
 
   // 3. If there's a user, but we are still waiting for their profile from Firestore.
