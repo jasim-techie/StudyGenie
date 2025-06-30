@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
-  loading: boolean; // This now represents ONLY the initial auth check
+  loading: boolean; // Represents ONLY the initial auth check from Firebase Auth
 }
 
 const AuthContext = createContext<AuthContextType>({ user: null, userProfile: null, loading: true });
@@ -20,37 +20,54 @@ const AuthContext = createContext<AuthContextType>({ user: null, userProfile: nu
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true); // Is the initial auth state check running?
+  const [loading, setLoading] = useState(true); // Is the initial onAuthStateChanged listener running?
 
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      setLoading(false); // Stop loading if Firebase isn't set up
+    if (!isFirebaseConfigured || !auth || !db) {
+      setLoading(false); 
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user); // Set the Firebase user object immediately
-      if (user && db) {
-        // If user is logged in, fetch their profile.
-        // The profile fetching is now independent of the main `loading` state.
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data() as UserProfile);
-        } else {
-          // This can happen if the user doc creation failed after signup
-          console.error("User exists in Auth, but no profile found in Firestore.");
-          setUserProfile(null);
-        }
-      } else {
-        // If user is logged out, clear the profile.
+    // Listener for Firebase Auth state changes
+    const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+      setUser(authUser);
+      if (!authUser) {
+        // User is signed out
         setUserProfile(null);
+        setLoading(false); // Auth check is complete
       }
-      setLoading(false); // The initial auth check is complete.
+      // If authUser exists, the profile listener below will handle setting the profile.
+      // We set loading to false here because we now know the user's auth status.
+      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    let unsubscribeProfile: (() => void) | undefined;
+
+    if (user && db) {
+        // Listener for Firestore profile changes for the logged-in user
+        const userDocRef = doc(db, 'users', user.uid);
+        unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setUserProfile(docSnap.data() as UserProfile);
+            } else {
+                console.error("User profile not found in Firestore for UID:", user.uid);
+                setUserProfile(null);
+            }
+        }, (error) => {
+            console.error("Error listening to user profile:", error);
+            setUserProfile(null);
+        });
+    }
+
+    // Cleanup both listeners on component unmount
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
+  }, [user]); // Re-run effect if the user object changes (login/logout)
+
 
   if (!isFirebaseConfigured) {
     return (
@@ -62,15 +79,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             Your Firebase environment variables are missing or incomplete. Please create a 
             <code className="mx-1 rounded bg-muted px-1.5 py-0.5 font-mono text-sm">.env.local</code>
             file in your project's root directory and add your Firebase credentials.
-            You can copy the format from the <code className="mx-1 rounded bg-muted px-1.5 py-0.5 font-mono text-sm">.env</code> file. The app will not work correctly until this is configured.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  // The AuthProvider no longer renders a global loading screen.
-  // The consumer pages (dashboards) will handle their own loading states.
   return (
     <AuthContext.Provider value={{ user, userProfile, loading }}>
       {children}
