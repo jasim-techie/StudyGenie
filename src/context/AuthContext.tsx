@@ -12,33 +12,37 @@ interface AuthContextType {
   user: User | null;
   userProfile: StudentProfile | null;
   loading: boolean; // Represents ONLY the initial auth check
+  profileLoading: boolean; // Represents the loading state of the Firestore profile
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, userProfile: null, loading: true });
+const AuthContext = createContext<AuthContextType>({ user: null, userProfile: null, loading: true, profileLoading: true });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<StudentProfile | null>(null);
-  const [loading, setLoading] = useState(true); // This now tracks only the initial onAuthStateChanged call
+  const [loading, setLoading] = useState(true); // Tracks initial onAuthStateChanged
+  const [profileLoading, setProfileLoading] = useState(true); // Tracks Firestore profile fetch
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth || !db) {
       setLoading(false);
+      setProfileLoading(false);
       return;
     }
 
     let unsubscribeProfile: (() => void) | undefined;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
-      // Clean up the old profile listener if the user changes
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
-      }
-
+      setLoading(false); // Initial auth check is complete
       setUser(authUser);
 
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = undefined;
+      }
+
       if (authUser) {
-        // User is logged in, listen for their profile document from the 'students' collection
+        setProfileLoading(true); // Start loading profile for the new user
         const userDocRef = doc(db, 'students', authUser.uid);
         unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -47,20 +51,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.warn("Student profile not found in Firestore for UID:", authUser.uid);
             setUserProfile(null);
           }
+          setProfileLoading(false); // Profile fetch is complete
         }, (error) => {
           console.error("Error listening to student profile:", error);
           setUserProfile(null);
+          setProfileLoading(false); // Profile fetch failed
         });
       } else {
-        // User is logged out, clear profile
+        // User is logged out
         setUserProfile(null);
+        setProfileLoading(false); // No profile to load
       }
-      
-      // The initial auth check is complete, so we can stop the main loader.
-      setLoading(false);
     });
 
-    // Cleanup both listeners on component unmount
     return () => {
       unsubscribeAuth();
       if (unsubscribeProfile) {
@@ -86,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, profileLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Suspense } from "react";
@@ -7,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Link from "next/link";
 import { BookOpen, HelpCircleIcon, Sparkles } from "lucide-react";
 
@@ -18,10 +17,10 @@ const quickLinks = [
 ];
 
 function StudentDashboardContent() {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, profileLoading } = useAuth();
   const router = useRouter();
 
-  // 1. Show a loader while the initial auth check is running.
+  // 1. Show a generic loader while the initial auth check is running.
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -31,23 +30,37 @@ function StudentDashboardContent() {
     );
   }
 
-  // 2. If auth is checked and there's no user, redirect them.
+  // 2. If auth is checked and there's no user, redirect them to login.
   if (!user) {
     router.replace('/login');
     return null; // Render nothing while redirecting
   }
-  
-  // 3. If there's a user but the profile is still loading from Firestore.
-  if (!userProfile) {
-    return (
+
+  // 3. If there's a user, but we are still waiting for their profile from Firestore.
+  if (profileLoading) {
+     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-4 text-lg font-medium text-foreground">Loading Profile...</p>
       </div>
     );
   }
+  
+  // 4. If the profile failed to load for some reason after trying.
+  if (!userProfile) {
+     return (
+      <div className="flex h-screen w-full items-center justify-center bg-background text-center">
+        <div>
+          <p className="text-lg font-medium text-destructive-foreground bg-destructive p-4 rounded-md">
+            Could not load your profile.
+          </p>
+          <p className="mt-2 text-muted-foreground">Please try logging out and back in.</p>
+        </div>
+      </div>
+    );
+  }
 
-  // 4. Success! Render the dashboard.
+  // 5. Success! Render the dashboard.
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
       <Header />
@@ -61,7 +74,7 @@ function StudentDashboardContent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1">
+        <div className="grid grid-cols-1 gap-8">
              <section>
               <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access to AI Tools</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -80,6 +93,24 @@ function StudentDashboardContent() {
                   </Card>
                   ))}
               </div>
+            </section>
+            
+            <section>
+              <Card className="shadow-lg border-border/70 bg-card/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>Your Family Code</CardTitle>
+                  <CardDescription>
+                    This is your unique code for account linking features.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="bg-muted p-4 rounded-lg flex items-center justify-center">
+                        <p className="text-2xl font-mono font-bold text-primary tracking-widest">
+                            {userProfile.familyCode || "GENERATING..."}
+                        </p>
+                    </div>
+                </CardContent>
+              </Card>
             </section>
         </div>
 

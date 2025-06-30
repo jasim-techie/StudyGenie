@@ -6,6 +6,7 @@ export interface StudentProfile {
   name: string;
   email: string;
   createdAt: Timestamp; 
+  familyCode: string;
 }
 
 // --- Study Plan Generator ---

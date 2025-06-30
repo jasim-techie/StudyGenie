@@ -64,6 +64,7 @@ export default function AuthPage() {
             name: fullName,
             email: user.email,
             createdAt: serverTimestamp(),
+            familyCode: crypto.randomUUID().substring(0, 8).toUpperCase(),
         };
         
         // Save student profile to 'students' collection in Firestore
