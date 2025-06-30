@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 function ParentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   
   const [studentProfile, setStudentProfile] = useState<UserProfile | null>(null);
   const [subjects, setSubjects] = useState<StudyRoomSubject[]>([]);
@@ -32,6 +32,7 @@ function ParentPageContent() {
   const [crosscheckHistory, setCrosscheckHistory] = useState<CrosscheckQuestion[]>([]);
 
   useEffect(() => {
+    if (authLoading) return; // Wait for auth to be ready
     if (!user) {
       router.push('/login');
       return;
@@ -78,8 +79,12 @@ function ParentPageContent() {
       });
       setSubjects(newSubjects);
     }, (error) => {
-      console.error("Error fetching subjects: ", error);
-      toast({ title: "Permission Error", description: "Could not fetch subjects. Please ensure Firestore rules allow parent access.", variant: "destructive"});
+        console.error("Error fetching subjects: ", error);
+        let description = "Could not fetch subjects. Please check your internet connection and try again.";
+        if (error.code === 'permission-denied') {
+            description = "Your Firestore Security Rules are blocking access. A parent needs explicit permission to view their student's list of subjects. Please add a 'list' rule for the 'subjects' collection in your firestore.rules file.";
+        }
+        toast({ title: "Permission Error", description, variant: "destructive", duration: 9000 });
     });
 
     return () => {
@@ -87,7 +92,7 @@ function ParentPageContent() {
       subjectsUnsubscribe();
       fileUnsubscribers.forEach(unsub => unsub());
     };
-  }, [user, userProfile, router, toast]);
+  }, [user, userProfile, authLoading, router, toast]);
 
   // Effect for fetching cross-check history
   useEffect(() => {
@@ -170,6 +175,15 @@ function ParentPageContent() {
   const getInitials = (name: string) => {
     if (!name) return "";
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg font-medium text-foreground">Loading Dashboard...</p>
+      </div>
+    );
   }
 
   if (!userProfile?.linkedStudent) {
@@ -367,15 +381,8 @@ function ParentPageContent() {
 
 export default function ParentDashboardPage() {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg font-medium text-foreground">Loading Dashboard...</p>
-      </div>
-    }>
+    <Suspense>
       <ParentPageContent />
     </Suspense>
   );
 }
-
-    
