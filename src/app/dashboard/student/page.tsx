@@ -36,7 +36,6 @@ function StudentPageContent() {
   const [activeQuestion, setActiveQuestion] = useState<QuestionWithStatus | null>(null);
   const [answer, setAnswer] = useState("");
   const [isAnswering, setIsAnswering] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return; // Wait for auth to finish
@@ -47,8 +46,10 @@ function StudentPageContent() {
 
 
   useEffect(() => {
+    if (authLoading) return; // Explicitly wait for auth to complete
+
     if (userProfile?.role !== 'student' || !userProfile.familyCode || !user?.uid) {
-        setIsLoading(false);
+        setQuestions([]);
         return;
     }
     
@@ -76,7 +77,6 @@ function StudentPageContent() {
         } as QuestionWithStatus));
 
         setQuestions(fetchedQuestions);
-        setIsLoading(false);
 
         fetchedQuestions.forEach((question) => {
             if (answerUnsubscribers[question.id]) return;
@@ -98,7 +98,7 @@ function StudentPageContent() {
         questionsUnsubscribe();
         Object.values(answerUnsubscribers).forEach(unsub => unsub());
     };
-  }, [userProfile, user]);
+  }, [userProfile, user, authLoading]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -138,7 +138,7 @@ function StudentPageContent() {
     }
   };
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -258,8 +258,7 @@ function StudentPageContent() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {isLoading ? <Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /> : 
-              questions.length > 0 ? questions.map(q => (
+              {questions.length > 0 ? questions.map(q => (
                 <Card key={q.id} className={`p-4 ${q.answered ? 'bg-muted/60' : ''}`}>
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                     <div>

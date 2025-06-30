@@ -29,7 +29,6 @@ function ParentPageContent() {
   const [subjects, setSubjects] = useState<StudyRoomSubject[]>([]);
   const [crosscheckQuestion, setCrosscheckQuestion] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(true);
   const [crosscheckHistory, setCrosscheckHistory] = useState<CrosscheckQuestion[]>([]);
 
   useEffect(() => {
@@ -38,19 +37,16 @@ function ParentPageContent() {
       router.push('/login'); // Redirect if not logged in
       return;
     }
-    // Continue with data fetching if user is logged in
   }, [user, authLoading, router]);
 
   // Effect for fetching student profile and study progress
   useEffect(() => {
-    if (userProfile?.role !== 'parent') {
-      setIsLoadingData(false);
-      return;
-    }
+    if (authLoading) return; // Explicitly wait for auth to complete
 
-    if (!userProfile.linkedStudent) {
-      setIsLoadingData(false);
-      return; // Parent is not linked to any student
+    if (userProfile?.role !== 'parent' || !userProfile.linkedStudent) {
+      setStudentProfile(null);
+      setSubjects([]);
+      return; // Parent is not linked to any student or user is not a parent
     }
     
     const studentId = userProfile.linkedStudent;
@@ -76,7 +72,6 @@ function ParentPageContent() {
       const newSubjects: StudyRoomSubject[] = [];
       if (subjectsSnapshot.empty) {
         setSubjects([]);
-        setIsLoadingData(false);
         return;
       }
       
@@ -94,7 +89,6 @@ function ParentPageContent() {
         fileUnsubscribers.push(filesUnsubscribe);
       });
       setSubjects(newSubjects);
-      setIsLoadingData(false);
     });
 
     return () => {
@@ -102,11 +96,11 @@ function ParentPageContent() {
       subjectsUnsubscribe();
       fileUnsubscribers.forEach(unsub => unsub());
     };
-  }, [userProfile]);
+  }, [userProfile, authLoading]);
 
   // Effect for fetching cross-check history
   useEffect(() => {
-    if (!studentProfile?.familyCode) return;
+    if (authLoading || !studentProfile?.familyCode) return;
     
     const questionsQuery = query(collection(db, `crosscheck/${studentProfile.familyCode}/questions`), orderBy("askedAt", "desc"));
     let answerUnsubscribers: Record<string, () => void> = {};
@@ -141,7 +135,7 @@ function ParentPageContent() {
         questionsUnsubscribe();
         Object.values(answerUnsubscribers).forEach(unsub => unsub());
     };
-}, [studentProfile]);
+}, [studentProfile, authLoading]);
 
 
   const handleLogout = async () => {
@@ -188,7 +182,7 @@ function ParentPageContent() {
   }
 
 
-  if (authLoading || isLoadingData) {
+  if (authLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
