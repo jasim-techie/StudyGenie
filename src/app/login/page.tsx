@@ -20,10 +20,6 @@ import {
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-const generateFamilyCode = () => {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
 export default function AuthPage() {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState("");
@@ -68,9 +64,7 @@ export default function AuthPage() {
             uid: user.uid,
             name: fullName,
             email: user.email,
-            role: 'student', // Hardcoded to student
             createdAt: serverTimestamp(),
-            familyCode: generateFamilyCode(), // Kept for potential future use or consistency
         };
         
         await setDoc(doc(db, "users", user.uid), userDocData);
@@ -99,10 +93,10 @@ export default function AuthPage() {
         <div className="p-2">
             <div className="relative flex w-full rounded-lg bg-muted p-1.5 shadow-inner">
                 <button type="button" onClick={() => setIsLoginView(true)} className={cn("relative z-10 flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors duration-300 ease-out rounded-md", isLoginView ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-                    <User className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Login
+                    <LogIn className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Student Login
                 </button>
                 <button type="button" onClick={() => setIsLoginView(false)} className={cn("relative z-10 flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors duration-300 ease-out rounded-md", !isLoginView ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-                    <UserPlus className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Sign Up
+                    <UserPlus className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Student Sign Up
                 </button>
                 <div className={cn("absolute inset-0 m-1.5 h-[calc(100%-0.75rem)] w-[calc(50%-0.375rem)] rounded-md shadow-md transition-all duration-300 ease-out", isLoginView ? "translate-x-0 bg-primary" : "translate-x-full bg-red-600")} />
             </div>
@@ -110,7 +104,7 @@ export default function AuthPage() {
         
         <form onSubmit={handleAuthAction}>
             <CardHeader>
-                <CardTitle>{isLoginView ? "Welcome Back!" : "Create an Account"}</CardTitle>
+                <CardTitle>{isLoginView ? "Welcome Back, Student!" : "Create Your Student Account"}</CardTitle>
                 <CardDescription>{isLoginView ? "Sign in to continue your learning journey." : "Join StudyGenie AI to get started."}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

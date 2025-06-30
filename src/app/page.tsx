@@ -155,7 +155,7 @@ function HomePageContent() {
       </main>
       <footer className="py-6 text-center text-muted-foreground border-t">
         <p>&copy; {new Date().getFullYear()} StudyGenie AI. All rights reserved.</p>
-        <p className="text-xs mt-1">Powered by Genkit & Next.js</p>
+        <p className="text-xs mt-1">Powered by Ai & Next.js</p>
       </footer>
     </div>
   );

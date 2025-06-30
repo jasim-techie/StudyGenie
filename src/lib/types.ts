@@ -6,8 +6,6 @@ export interface UserProfile {
   uid: string;
   name: string;
   email: string;
-  role: 'student'; // Only student role is supported now
-  familyCode?: string; // Kept for potential future use or consistency
   createdAt: Timestamp; 
 }
 
