@@ -1,17 +1,16 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, UserCog, LogIn, BrainCircuit, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, UserPlus, LogIn, BrainCircuit, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
@@ -25,56 +24,8 @@ const generateFamilyCode = () => {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const { toast } = useToast();
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!auth) return;
-    setIsLoading(true);
-    try {
-      await setPersistence(auth, browserSessionPersistence);
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "Login Successful", description: "Welcome back!" });
-      router.push('/dashboard');
-    } catch (error) {
-      console.error("Login error:", error);
-      toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleLogin} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="login-email">Email Address</Label>
-        <Input id="login-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="login-password">Password</Label>
-        <div className="relative">
-          <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
-            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-          </Button>
-        </div>
-      </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? <Loader2 className="animate-spin mr-2"/> : <LogIn className="mr-2 h-5 w-5" />}
-        {isLoading ? "Logging in..." : "Login"}
-      </Button>
-    </form>
-  );
-}
-
-function SignUpForm() {
-  const [role, setRole] = useState<"student" | "parent">("student");
+export default function AuthPage() {
+  const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -83,85 +34,61 @@ function SignUpForm() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleAuthAction = async (e: FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim()) {
-      toast({ title: "Name Required", description: "Please enter your full name.", variant: "destructive" });
-      return;
-    }
-    if (!auth || !db) return;
-    
     setIsLoading(true);
-    try {
-      await setPersistence(auth, browserSessionPersistence);
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
 
-      const userDocData = {
-          uid: user.uid,
-          name: fullName,
-          email: user.email,
-          role: role,
-          createdAt: serverTimestamp(),
-          ...(role === 'student' && { familyCode: generateFamilyCode() }),
-          ...(role === 'parent' && { linkedStudent: null }),
-      };
-      
-      await setDoc(doc(db, "users", user.uid), userDocData);
-      toast({ title: "Account Created!", description: "You have been successfully signed up." });
-      router.push('/dashboard');
-
-    } catch (error: any) {
-        console.error("Sign up error:", error);
-        const errorMessage = error.code === 'auth/email-already-in-use' ? "This email address is already in use."
-                           : error.code === 'auth/weak-password' ? "Password must be at least 6 characters."
-                           : "An unknown error occurred during sign up.";
-        toast({ title: "Sign Up Failed", description: errorMessage, variant: "destructive" });
-    } finally {
+    if (isLoginView) {
+      // --- LOGIN LOGIC ---
+      try {
+        await setPersistence(auth, browserSessionPersistence);
+        await signInWithEmailAndPassword(auth, email, password);
+        toast({ title: "Login Successful", description: "Welcome back!" });
+        router.push('/dashboard');
+      } catch (error) {
+        console.error("Login error:", error);
+        toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
+      } finally {
         setIsLoading(false);
+      }
+    } else {
+      // --- SIGN UP LOGIC ---
+      if (!fullName.trim()) {
+        toast({ title: "Name Required", description: "Please enter your full name.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+      try {
+        await setPersistence(auth, browserSessionPersistence);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // All users are students now
+        const userDocData = {
+            uid: user.uid,
+            name: fullName,
+            email: user.email,
+            role: 'student', // Hardcoded to student
+            createdAt: serverTimestamp(),
+            familyCode: generateFamilyCode(), // Kept for potential future use or consistency
+        };
+        
+        await setDoc(doc(db, "users", user.uid), userDocData);
+        toast({ title: "Account Created!", description: "You have been successfully signed up." });
+        router.push('/dashboard');
+
+      } catch (error: any) {
+          console.error("Sign up error:", error);
+          const errorMessage = error.code === 'auth/email-already-in-use' ? "This email address is already in use."
+                             : error.code === 'auth/weak-password' ? "Password must be at least 6 characters."
+                             : "An unknown error occurred during sign up.";
+          toast({ title: "Sign Up Failed", description: errorMessage, variant: "destructive" });
+      } finally {
+          setIsLoading(false);
+      }
     }
   };
 
-  return (
-    <form onSubmit={handleSignUp} className="space-y-4">
-      <div className="space-y-2">
-        <Label>I am a...</Label>
-        <div className="relative flex w-full rounded-lg bg-muted p-1.5 shadow-inner">
-          <button type="button" onClick={() => setRole("student")} className={cn("relative z-10 flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors duration-300 ease-out rounded-md", role === "student" ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-            <User className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Student
-          </button>
-          <button type="button" onClick={() => setRole("parent")} className={cn("relative z-10 flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors duration-300 ease-out rounded-md", role === "parent" ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-            <UserCog className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Parent
-          </button>
-          <div className={cn("absolute inset-0 m-1.5 h-[calc(100%-0.75rem)] w-[calc(50%-0.375rem)] rounded-md shadow-md transition-all duration-300 ease-out", role === "student" ? "translate-x-0 bg-primary" : "translate-x-full bg-red-600")} />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="fullName">Full Name</Label>
-        <Input id="fullName" type="text" placeholder="Your Name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="signup-email">Email Address</Label>
-        <Input id="signup-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="signup-password">Password</Label>
-        <div className="relative">
-          <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
-           <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
-            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-          </Button>
-        </div>
-      </div>
-      <Button type="submit" className={cn("w-full", role === 'parent' && 'bg-red-600 hover:bg-red-700')} disabled={isLoading}>
-        {isLoading ? <Loader2 className="animate-spin mr-2"/> : <LogIn className="mr-2 h-5 w-5" />}
-        {isLoading ? "Creating Account..." : "Create Account"}
-      </Button>
-    </form>
-  );
-}
-
-export default function AuthPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4 selection:bg-primary/20">
       <Link href="/" className="flex items-center gap-2.5 text-primary mb-6 sm:mb-8">
@@ -169,30 +96,51 @@ export default function AuthPage() {
         <h1 className="text-3xl sm:text-4xl font-headline font-bold tracking-tight">StudyGenie AI</h1>
       </Link>
       <Card className="w-full max-w-md shadow-2xl border-border/60 bg-card/90 backdrop-blur-md">
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
-          <TabsContent value="login">
+        <div className="p-2">
+            <div className="relative flex w-full rounded-lg bg-muted p-1.5 shadow-inner">
+                <button type="button" onClick={() => setIsLoginView(true)} className={cn("relative z-10 flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors duration-300 ease-out rounded-md", isLoginView ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <User className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Login
+                </button>
+                <button type="button" onClick={() => setIsLoginView(false)} className={cn("relative z-10 flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors duration-300 ease-out rounded-md", !isLoginView ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    <UserPlus className="inline-block mr-1.5 h-4 w-4 mb-0.5" /> Sign Up
+                </button>
+                <div className={cn("absolute inset-0 m-1.5 h-[calc(100%-0.75rem)] w-[calc(50%-0.375rem)] rounded-md shadow-md transition-all duration-300 ease-out", isLoginView ? "translate-x-0 bg-primary" : "translate-x-full bg-red-600")} />
+            </div>
+        </div>
+        
+        <form onSubmit={handleAuthAction}>
             <CardHeader>
-              <CardTitle>Welcome Back!</CardTitle>
-              <CardDescription>Sign in to continue your learning journey.</CardDescription>
+                <CardTitle>{isLoginView ? "Welcome Back!" : "Create an Account"}</CardTitle>
+                <CardDescription>{isLoginView ? "Sign in to continue your learning journey." : "Join StudyGenie AI to get started."}</CardDescription>
             </CardHeader>
-            <CardContent>
-              <LoginForm />
+            <CardContent className="space-y-4">
+                {!isLoginView && (
+                    <div className="space-y-2">
+                        <Label htmlFor="fullName">Full Name</Label>
+                        <Input id="fullName" type="text" placeholder="Your Name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                    </div>
+                )}
+                <div className="space-y-2">
+                    <Label htmlFor="login-email">Email Address</Label>
+                    <Input id="login-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <div className="relative">
+                        <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </Button>
+                    </div>
+                </div>
             </CardContent>
-          </TabsContent>
-          <TabsContent value="signup">
-            <CardHeader>
-              <CardTitle>Create an Account</CardTitle>
-              <CardDescription>Join StudyGenie AI to get started.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SignUpForm />
-            </CardContent>
-          </TabsContent>
-        </Tabs>
+            <CardFooter>
+                 <Button type="submit" className={cn("w-full", !isLoginView && 'bg-red-600 hover:bg-red-700')} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="animate-spin mr-2"/> : <LogIn className="mr-2 h-5 w-5" />}
+                    {isLoading ? (isLoginView ? "Logging in..." : "Creating Account...") : (isLoginView ? "Login" : "Create Account")}
+                </Button>
+            </CardFooter>
+        </form>
       </Card>
     </div>
   );

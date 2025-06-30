@@ -4,18 +4,15 @@
 import { Suspense } from "react";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from "next/navigation";
-import { Loader2, Copy } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { BookOpen, LayoutDashboard, HelpCircleIcon, Sparkles } from "lucide-react";
+import { BookOpen, HelpCircleIcon, Sparkles } from "lucide-react";
 
 const quickLinks = [
   { name: "New Study Plan", href: "/?tab=study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
-  { name: "Study Room", href: "/?tab=study-room", icon: LayoutDashboard, description: "Organize your notes and track progress." },
   { name: "Quiz Maker", href: "/?tab=quiz-maker", icon: HelpCircleIcon, description: "Test your knowledge from notes." },
   { name: "Key Point Extractor", href: "/?tab=key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
@@ -23,17 +20,6 @@ const quickLinks = [
 function StudentPageContent() {
   const { user, userProfile, loading } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
-
-  const handleCopyCode = () => {
-    if (userProfile?.familyCode) {
-      navigator.clipboard.writeText(userProfile.familyCode);
-      toast({
-        title: "Copied to Clipboard!",
-        description: `Your family code ${userProfile.familyCode} has been copied.`,
-      });
-    }
-  };
 
   // 1. Show a loader while the initial auth check is running.
   if (loading) {
@@ -61,13 +47,7 @@ function StudentPageContent() {
     );
   }
 
-  // 4. If the user's role is not 'student', redirect them.
-  if (userProfile.role !== 'student') {
-    router.replace('/dashboard/parent');
-    return null; // Render nothing while redirecting
-  }
-
-  // 5. Success! Render the dashboard.
+  // 4. Success! Render the dashboard.
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
       <Header />
@@ -81,12 +61,10 @@ function StudentPageContent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1">
              <section>
               <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-foreground/90">Quick Access to AI Tools</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {quickLinks.map(link => (
                   <Card key={link.name} className="hover:shadow-lg transition-shadow duration-200 ease-in-out border-border/70 bg-card/80 backdrop-blur-sm">
                       <CardHeader className="pb-3">
@@ -103,23 +81,6 @@ function StudentPageContent() {
                   ))}
               </div>
             </section>
-          </div>
-
-          {/* Sidebar-like card */}
-          <div className="md:col-span-1">
-            <Card className="shadow-lg">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl">Your Family Code</CardTitle>
-                    <CardDescription>Share this code with your parent to allow them to view your progress.</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                    <Badge variant="outline" className="text-2xl tracking-widest font-mono p-3 cursor-pointer" onClick={handleCopyCode}>
-                        {userProfile.familyCode}
-                        <Copy className="ml-3 h-5 w-5" />
-                    </Badge>
-                </CardContent>
-            </Card>
-          </div>
         </div>
 
       </main>

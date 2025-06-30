@@ -2,24 +2,23 @@
 "use client";
 
 import Link from 'next/link';
-import { BrainCircuit, Sun, Moon, LogIn, Menu, BookOpen, HelpCircleIcon, Sparkles, LayoutDashboard, UserCircle, Users } from 'lucide-react';
+import { BrainCircuit, Sun, Moon, LogIn, Menu, BookOpen, HelpCircleIcon, Sparkles, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { useAuth } from '@/context/AuthContext';
 
 const navLinks = [
   { href: "/?tab=study-plan", label: "Study Plan", icon: BookOpen },
-  { href: "/?tab=study-room", label: "Study Room", icon: LayoutDashboard },
   { href: "/?tab=quiz-maker", label: "Quiz Maker", icon: HelpCircleIcon },
   { href: "/?tab=key-points", label: "Key Points", icon: Sparkles },
-  { href: "/dashboard/student", label: "Student Dashboard", icon: UserCircle },
-  { href: "/dashboard/parent", label: "Parent Dashboard", icon: Users },
 ];
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { user } = useAuth();
 
   useEffect(() => setMounted(true), []);
 
@@ -38,7 +37,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.slice(0,4).map((link) => (
+            {navLinks.map((link) => (
                <Button key={link.label} variant="ghost" asChild size="sm">
                 <Link href={link.href} className="flex items-center gap-1.5">
                   <link.icon className="h-4 w-4" /> {link.label}
@@ -60,12 +59,23 @@ export function Header() {
               <span className="sr-only">Toggle theme</span>
             </Button>
           )}
-          <Link href="/login" passHref className="hidden md:block">
-            <Button variant="outline" size="sm">
-              <LogIn className="mr-2 h-4 w-4" />
-              Login / Sign Up
-            </Button>
-          </Link>
+
+          {user ? (
+             <Link href="/dashboard" passHref className="hidden md:block">
+                <Button variant="outline" size="sm">
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+          ) : (
+            <Link href="/login" passHref className="hidden md:block">
+              <Button variant="outline" size="sm">
+                <LogIn className="mr-2 h-4 w-4" />
+                Login / Sign Up
+              </Button>
+            </Link>
+          )}
+
 
           {/* Mobile Navigation */}
           <div className="md:hidden">
@@ -99,10 +109,10 @@ export function Header() {
                   </nav>
                   <div className="p-4 border-t">
                      <SheetClose asChild>
-                        <Link href="/login" passHref className="w-full">
+                        <Link href={user ? "/dashboard" : "/login"} passHref className="w-full">
                             <Button variant="outline" className="w-full">
-                            <LogIn className="mr-2 h-4 w-4" />
-                            Login / Sign Up
+                            {user ? <UserCircle className="mr-2 h-4 w-4" /> : <LogIn className="mr-2 h-4 w-4" />}
+                            {user ? "Dashboard" : "Login / Sign Up"}
                             </Button>
                         </Link>
                      </SheetClose>

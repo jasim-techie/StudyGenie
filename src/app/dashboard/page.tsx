@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
@@ -22,26 +21,15 @@ export default function DashboardRedirectPage() {
       return;
     }
 
-    // If there is a user but we are still waiting for their profile from Firestore.
-    // This is the key state to handle. The component will re-render once userProfile is available.
-    if (!userProfile) {
-      return; // Do nothing, the page will show its loading state
-    }
-
-    // Once we have the user and their profile, redirect based on role.
-    if (userProfile.role === 'student') {
+    // Since it's a student-only app now, always redirect to the student dashboard.
+    // We check for userProfile to ensure the data is loaded before redirecting.
+    if (userProfile) {
       router.replace('/dashboard/student');
-    } else if (userProfile.role === 'parent') {
-      router.replace('/dashboard/parent');
-    } else {
-      // Fallback for unknown roles or errors.
-      console.error("Unknown user role:", userProfile.role);
-      router.replace('/login');
     }
+    
   }, [user, userProfile, loading, router]);
 
   // This is the loading screen shown while the logic in useEffect is running.
-  // It correctly handles all intermediate states.
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />

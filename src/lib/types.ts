@@ -6,50 +6,10 @@ export interface UserProfile {
   uid: string;
   name: string;
   email: string;
-  role: 'student' | 'parent';
-  familyCode: string; // Generated for students, entered by parents
-  linkedStudent?: string; // For parents, the UID of their child
+  role: 'student'; // Only student role is supported now
+  familyCode?: string; // Kept for potential future use or consistency
   createdAt: Timestamp; 
 }
-
-// --- Study Room ---
-export interface UploadedFile {
-  id: string; // Firestore document ID
-  name: string;
-  type: 'pdf' | 'ppt' | 'pptx' | 'doc' | 'docx' | 'txt' | 'png' | 'jpg' | 'jpeg' | 'gif' | 'svg';
-  isStudied: boolean;
-  uploadedAt: Timestamp;
-  firebaseStorageUrl: string;
-}
-
-export interface StudyRoomSubject {
-  id: string; // Firestore document ID
-  name:string;
-  files?: UploadedFile[];
-  createdAt?: Timestamp;
-}
-
-// --- Cross-check (Parent-Student Questions) ---
-export interface CrosscheckQuestion {
-    id: string;
-    questionText: string;
-    type: 'mcq' | 'short';
-    options?: string[]; // Only for MCQ
-    correctOption?: string; // Only for MCQ
-    askedBy: string; // Parent name
-    askedAt: Timestamp; 
-    answers?: CrosscheckAnswer[]; // Subcollection as an array
-}
-
-export interface CrosscheckAnswer {
-    id: string;
-    answerText: string;
-    answeredBy: string; // Student UID
-    studentName: string;
-    answeredAt: Timestamp; 
-    isCorrect?: boolean; // Optional: for auto-graded MCQs
-}
-
 
 // --- Study Plan Generator ---
 export interface SubjectEntry {
@@ -121,5 +81,3 @@ export interface GenerateKeyPointsOutput {
     points: string[];
   }>;
 }
-
-    
