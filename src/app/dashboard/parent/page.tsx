@@ -15,10 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { collection, doc, onSnapshot, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { collection, doc, onSnapshot, addDoc, serverTimestamp, query, orderBy, where, getDocs, updateDoc } from "firebase/firestore";
 import type { StudyRoomSubject, UserProfile, CrosscheckQuestion, UploadedFile, CrosscheckAnswer } from "@/lib/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function ParentPageContent() {
   const { toast } = useToast();
@@ -30,107 +32,56 @@ function ParentPageContent() {
   const [crosscheckQuestion, setCrosscheckQuestion] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [crosscheckHistory, setCrosscheckHistory] = useState<CrosscheckQuestion[]>([]);
+  const [familyCodeInput, setFamilyCodeInput] = useState("");
+  const [isLinking, setIsLinking] = useState(false);
 
+  // Effect to fetch student data once parent profile is loaded and linked
   useEffect(() => {
-    if (authLoading) return; // Wait for auth to be ready
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    
-    if (userProfile?.role !== 'parent' || !userProfile.linkedStudent) {
+    if (!userProfile || !userProfile.linkedStudent) {
       setStudentProfile(null);
       setSubjects([]);
       return;
     }
     
     const studentId = userProfile.linkedStudent;
-
     const studentDocRef = doc(db, 'users', studentId);
+
     const studentUnsubscribe = onSnapshot(studentDocRef, (docSnap) => {
-      setStudentProfile(docSnap.exists() ? docSnap.data() as UserProfile : null);
+      if (docSnap.exists()) {
+        const studentData = docSnap.data() as UserProfile;
+        setStudentProfile(studentData);
+      } else {
+        setStudentProfile(null);
+        toast({ title: "Error", description: "Linked student profile not found.", variant: "destructive"});
+      }
     });
 
     const subjectsColRef = collection(db, `users/${studentId}/subjects`);
-    let fileUnsubscribers: (() => void)[] = [];
-
     const subjectsUnsubscribe = onSnapshot(subjectsColRef, (subjectsSnapshot) => {
-      fileUnsubscribers.forEach(unsub => unsub());
-      fileUnsubscribers = [];
-
-      const newSubjects: StudyRoomSubject[] = [];
-      if (subjectsSnapshot.empty) {
-        setSubjects([]);
-        return;
-      }
-      
-      subjectsSnapshot.forEach((subjectDoc) => {
-        const subjectData = { id: subjectDoc.id, ...subjectDoc.data(), files: [] } as StudyRoomSubject;
-        newSubjects.push(subjectData);
-
-        const filesColRef = collection(db, `users/${studentId}/subjects/${subjectDoc.id}/files`);
-        const filesUnsubscribe = onSnapshot(filesColRef, (filesSnapshot) => {
-          const filesData = filesSnapshot.docs.map(fileDoc => ({ id: fileDoc.id, ...fileDoc.data() } as UploadedFile));
-          setSubjects(currentSubjects => 
-            currentSubjects.map(s => s.id === subjectDoc.id ? { ...s, files: filesData } : s)
-          );
-        });
-        fileUnsubscribers.push(filesUnsubscribe);
-      });
+      const newSubjects = subjectsSnapshot.docs.map(subjectDoc => ({ id: subjectDoc.id, ...subjectDoc.data() } as StudyRoomSubject));
       setSubjects(newSubjects);
     }, (error) => {
-        console.error("Error fetching subjects: ", error);
-        let description = "Could not fetch subjects. Please check your internet connection and try again.";
-        if (error.code === 'permission-denied') {
-            description = "Your Firestore Security Rules are blocking access. A parent needs explicit permission to view their student's list of subjects. Please add a 'list' rule for the 'subjects' collection in your firestore.rules file.";
-        }
-        toast({ title: "Permission Error", description, variant: "destructive", duration: 9000 });
+      console.error("Error fetching subjects: ", error);
+      toast({ title: "Error", description: "Could not fetch subjects.", variant: "destructive" });
     });
 
     return () => {
       studentUnsubscribe();
       subjectsUnsubscribe();
-      fileUnsubscribers.forEach(unsub => unsub());
     };
-  }, [user, userProfile, authLoading, router, toast]);
+  }, [userProfile, toast]);
 
   // Effect for fetching cross-check history
   useEffect(() => {
     if (!studentProfile?.familyCode) return;
     
     const questionsQuery = query(collection(db, `crosscheck/${studentProfile.familyCode}/questions`), orderBy("askedAt", "desc"));
-    let answerUnsubscribers: Record<string, () => void> = {};
-
     const questionsUnsubscribe = onSnapshot(questionsQuery, (questionsSnapshot) => {
-        const activeQuestionIds = new Set(questionsSnapshot.docs.map(d => d.id));
-        Object.keys(answerUnsubscribers).forEach(qid => {
-            if (!activeQuestionIds.has(qid)) {
-                answerUnsubscribers[qid]();
-                delete answerUnsubscribers[qid];
-            }
-        });
-
-        const fetchedQuestions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), answers: [] } as CrosscheckQuestion));
+        const fetchedQuestions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrosscheckQuestion));
         setCrosscheckHistory(fetchedQuestions);
-
-        fetchedQuestions.forEach(question => {
-            if (answerUnsubscribers[question.id]) return;
-
-            const answersQuery = query(collection(db, `crosscheck/${studentProfile.familyCode}/questions/${question.id}/answers`));
-            const unsub = onSnapshot(answersQuery, (answersSnapshot) => {
-                const answersData = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrosscheckAnswer));
-                setCrosscheckHistory(currentQs =>
-                    currentQs.map(q => q.id === question.id ? { ...q, answers: answersData } : q)
-                );
-            });
-            answerUnsubscribers[question.id] = unsub;
-        });
     });
 
-    return () => {
-        questionsUnsubscribe();
-        Object.values(answerUnsubscribers).forEach(unsub => unsub());
-    };
+    return () => questionsUnsubscribe();
 }, [studentProfile]);
 
 
@@ -143,50 +94,72 @@ function ParentPageContent() {
     router.push('/login');
   };
   
-  const handleSendCrosscheck = async () => {
-    if (!crosscheckQuestion.trim() || !userProfile || !studentProfile) {
-      toast({ variant: "destructive", title: "Error", description: "Question cannot be empty." });
+  const handleLinkStudent = async () => {
+    if (!familyCodeInput.trim() || !user) {
+      toast({ title: "Family code required", variant: "destructive" });
       return;
     }
-    
-    setIsSending(true);
+    setIsLinking(true);
     try {
-      const questionsColRef = collection(db, `crosscheck/${studentProfile.familyCode}/questions`);
-      await addDoc(questionsColRef, {
-        questionText: crosscheckQuestion,
-        type: "short", // Defaulting to short answer
-        askedBy: userProfile.name,
-        askedAt: serverTimestamp(),
-      });
+      const q = query(collection(db, "users"), where("familyCode", "==", familyCodeInput), where("role", "==", "student"));
+      const studentQuerySnapshot = await getDocs(q);
 
-      toast({
-        title: "Question Sent!",
-        description: `Your question has been sent to ${studentProfile.name}.`,
-      });
-      setCrosscheckQuestion("");
+      if (studentQuerySnapshot.empty) {
+        toast({ title: "No Student Found", description: "Please check the family code and try again.", variant: "destructive" });
+        return;
+      }
+      const studentDoc = studentQuerySnapshot.docs[0];
+      const parentDocRef = doc(db, "users", user.uid);
+      await updateDoc(parentDocRef, { linkedStudent: studentDoc.id });
+
+      toast({ title: "Success!", description: `You are now linked to ${studentDoc.data().name}.` });
+      // The component will re-render due to userProfile change in AuthContext, no manual reload needed.
     } catch (error) {
-      console.error("Error sending question: ", error);
-      toast({ variant: "destructive", title: "Error", description: "Failed to send question." });
+      console.error("Error linking student:", error);
+      toast({ title: "Error", description: "Could not link student account.", variant: "destructive" });
     } finally {
-      setIsSending(false);
+      setIsLinking(false);
     }
   };
 
-  const getInitials = (name: string) => {
-    if (!name) return "";
+  const getInitials = (name: string = "") => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
+
+  // --- Loading and Auth Guard Logic ---
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
 
   if (authLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg font-medium text-foreground">Loading Dashboard...</p>
+        <p className="ml-4 text-lg font-medium text-foreground">Authenticating...</p>
       </div>
     );
   }
 
-  if (!userProfile?.linkedStudent) {
+  if (user && !userProfile) {
+     return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-4 text-lg font-medium text-foreground">Loading Profile...</p>
+        </div>
+    );
+  }
+
+  if (!user) return null; // Redirect is handled by useEffect
+
+  if (userProfile && userProfile.role !== 'parent') {
+    router.replace('/dashboard/student');
+    return null;
+  }
+
+  // Unlinked Parent View
+  if (userProfile && !userProfile.linkedStudent) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
             <Card className="max-w-md w-full text-center">
@@ -195,15 +168,23 @@ function ParentPageContent() {
                         <LinkIcon className="h-6 w-6 text-primary" />
                         Link to a Student Account
                     </CardTitle>
+                    <CardDescription>Enter your child's 6-digit Family Code to view their progress.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">
-                        Your parent account is not yet linked to a student. To view progress, please sign up again using your child's 6-digit <Badge variant="outline">Family Code</Badge>.
-                    </p>
+                <CardContent className="space-y-2">
+                    <Label htmlFor="family-code" className="sr-only">Family Code</Label>
+                    <Input 
+                        id="family-code"
+                        value={familyCodeInput}
+                        onChange={(e) => setFamilyCodeInput(e.target.value)}
+                        placeholder="123456"
+                        maxLength={6}
+                        className="text-center text-lg tracking-widest font-mono h-12"
+                    />
                 </CardContent>
                 <CardFooter className="flex-col gap-4">
-                    <Button asChild className="w-full">
-                        <Link href="/login">Go to Login/Sign Up</Link>
+                    <Button onClick={handleLinkStudent} className="w-full" disabled={isLinking}>
+                        {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                        Link Account
                     </Button>
                     <Button variant="ghost" onClick={handleLogout}>Logout</Button>
                 </CardFooter>
@@ -212,7 +193,7 @@ function ParentPageContent() {
     );
   }
 
-
+  // Linked Parent View
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/10">
       <Header />
@@ -229,15 +210,9 @@ function ParentPageContent() {
               <Button variant="secondary" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" asChild>
                 <Link href={`/dashboard/parent`}><Home className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Dashboard</Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Coming Soon", description: "Student profile & settings will be here."})}>
-                <User className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Child's Profile
-              </Button>
             </nav>
           </div>
           <div className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={() => toast({title: "Feature Coming Soon", description: "Account settings will be available here."})}>
-              <Settings className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Settings
-            </Button>
             <Button variant="outline" className="w-full justify-start text-sm lg:text-base py-2.5 lg:py-3" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4 lg:h-5 lg:w-5" /> Logout
             </Button>
@@ -247,7 +222,7 @@ function ParentPageContent() {
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline text-foreground">
-              {studentProfile ? `${studentProfile.name}'s Progress Overview` : "Student Progress Overview"}
+              {studentProfile ? `${studentProfile.name}'s Progress` : "Student Progress Overview"}
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground mt-1">
               Stay updated on your child's study activities and progress.
@@ -259,7 +234,7 @@ function ParentPageContent() {
                 <Card className="shadow-xl border-border/80 bg-card/80 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="font-headline text-xl sm:text-2xl lg:text-3xl flex items-center">
-                      <BarChart3 className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-primary" />
+                      <BarChart3 className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-primary" />
                       Subject Progress
                     </CardTitle>
                   </CardHeader>
@@ -301,35 +276,7 @@ function ParentPageContent() {
             </div>
             
             <div className="space-y-6 sm:space-y-8">
-              <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
-                        <FileQuestion className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 text-accent" />
-                        Crosscheck Question
-                    </CardTitle>
-                    <CardDescription className="text-sm sm:text-base">
-                        {studentProfile ? `Send a quick question to ${studentProfile.name}.` : "Link to a student to send questions."}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Textarea 
-                      placeholder="e.g., What is the powerhouse of the cell?"
-                      value={crosscheckQuestion}
-                      onChange={(e) => setCrosscheckQuestion(e.target.value)}
-                      rows={4}
-                      className="text-base"
-                      disabled={!studentProfile || isSending}
-                    />
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={handleSendCrosscheck} className="w-full" disabled={!studentProfile || isSending}>
-                    {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                    {isSending ? "Sending..." : "Send Question"}
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
+               <Card className="shadow-lg border-border/80 bg-card/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="font-headline text-xl sm:text-2xl flex items-center">
                     <Clock className="mr-2 sm:mr-3 h-6 w-6 text-primary" />
@@ -342,23 +289,7 @@ function ParentPageContent() {
                       <AccordionItem value={q.id} key={q.id}>
                         <AccordionTrigger>{q.questionText}</AccordionTrigger>
                         <AccordionContent>
-                          {q.answers && q.answers.length > 0 ? (
-                            <ul className="space-y-3 pt-2">
-                              {q.answers.map(ans => (
-                                <li key={ans.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-md">
-                                   <Avatar className="h-8 w-8 border">
-                                      <AvatarFallback>{getInitials(ans.studentName)}</AvatarFallback>
-                                   </Avatar>
-                                  <div>
-                                    <p className="font-semibold text-sm">{ans.studentName}</p>
-                                    <p className="text-sm text-foreground">{ans.answerText}</p>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-sm text-muted-foreground text-center py-2">No answers yet.</p>
-                          )}
+                           <p className="text-sm text-muted-foreground text-center py-2">Answers would appear here.</p>
                         </AccordionContent>
                       </AccordionItem>
                     )) : (

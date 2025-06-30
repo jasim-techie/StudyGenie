@@ -4,7 +4,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
-import { User, Home, BookOpen, HelpCircleIcon, Sparkles, LayoutDashboard, Settings, LogOut, Loader2, MessageCircleQuestion, Check, X } from "lucide-react";
+import { User, Home, BookOpen, HelpCircleIcon, Sparkles, LayoutDashboard, Settings, LogOut, Loader2, MessageCircleQuestion, Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import { collection, onSnapshot, query, orderBy, doc, setDoc, serverTimestamp } 
 import type { CrosscheckQuestion } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
 const quickLinks = [
   { name: "New Study Plan", href: "/?tab=study-plan", icon: BookOpen, description: "Generate a personalized study schedule." },
@@ -30,7 +31,7 @@ type QuestionWithStatus = CrosscheckQuestion & { answered: boolean };
 function StudentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   
   const [questions, setQuestions] = useState<QuestionWithStatus[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<QuestionWithStatus | null>(null);
@@ -38,12 +39,13 @@ function StudentPageContent() {
   const [isAnswering, setIsAnswering] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return; // Wait for initial auth check
     if (!user) {
-      router.push('/login');
-      return;
+        router.replace('/login');
+        return;
     }
-
-    if (userProfile?.role !== 'student' || !userProfile.familyCode) {
+    if (!userProfile) return; // Wait for profile to be loaded
+    if (userProfile.role !== 'student' || !userProfile.familyCode) {
         setQuestions([]);
         return;
     }
@@ -93,7 +95,7 @@ function StudentPageContent() {
         questionsUnsubscribe();
         Object.values(answerUnsubscribers).forEach(unsub => unsub());
     };
-  }, [user, userProfile, router]);
+  }, [user, userProfile, authLoading, router]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -102,6 +104,16 @@ function StudentPageContent() {
       description: "You have been successfully logged out.",
     });
     router.push('/login');
+  };
+
+  const handleCopyCode = () => {
+    if (userProfile?.familyCode) {
+      navigator.clipboard.writeText(userProfile.familyCode);
+      toast({
+        title: "Copied to Clipboard!",
+        description: `Your family code ${userProfile.familyCode} has been copied.`,
+      });
+    }
   };
 
   const handleOpenAnswerDialog = (question: QuestionWithStatus) => {
@@ -133,6 +145,32 @@ function StudentPageContent() {
     }
   };
 
+  // --- Loading and Auth Guard Logic ---
+  if (authLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg font-medium text-foreground">Authenticating...</p>
+      </div>
+    );
+  }
+
+  if (user && !userProfile) {
+     return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-4 text-lg font-medium text-foreground">Loading Profile...</p>
+        </div>
+    );
+  }
+
+  if (!user) return null; // Redirect is handled by useEffect
+  
+  if (userProfile && userProfile.role !== 'student') {
+    router.replace('/dashboard/parent');
+    return null;
+  }
+  
   return (
     <>
     <Dialog open={!!activeQuestion} onOpenChange={() => setActiveQuestion(null)}>
@@ -171,9 +209,12 @@ function StudentPageContent() {
               <h2 className="text-lg lg:text-xl font-semibold">{userProfile?.name}</h2>
               <p className="text-xs lg:text-sm text-muted-foreground">Student Portal</p>
               {userProfile?.familyCode && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground">Family Code:</p>
-                  <Badge variant="outline" className="text-sm tracking-widest">{userProfile.familyCode}</Badge>
+                <div className="mt-2 text-center">
+                    <p className="text-xs text-muted-foreground">Family Code:</p>
+                    <Badge variant="outline" className="text-sm tracking-widest font-mono cursor-pointer" onClick={handleCopyCode}>
+                        {userProfile.familyCode}
+                        <Copy className="ml-2 h-3 w-3" />
+                    </Badge>
                 </div>
               )}
             </div>
@@ -280,15 +321,8 @@ function StudentPageContent() {
 
 export default function StudentDashboardPage() {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg font-medium text-foreground">Loading Dashboard...</p>
-      </div>
-    }>
+    <Suspense>
       <StudentPageContent />
     </Suspense>
   );
 }
-
-    

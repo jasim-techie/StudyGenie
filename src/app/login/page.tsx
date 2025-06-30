@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,6 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
@@ -22,12 +21,7 @@ import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, getDocs, query, where, collection, serverTimestamp } from "firebase/firestore";
 
 const generateFamilyCode = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 export default function LoginPage() {
@@ -42,16 +36,6 @@ export default function LoginPage() {
   
   const router = useRouter();
   const { toast } = useToast();
-  const { user, userProfile, loading } = useAuth();
-  
-  useEffect(() => {
-    // If loading is false and user is logged in, redirect them.
-    if (!loading && user && userProfile) {
-        const dashboardPath = userProfile.role === 'student' ? '/dashboard/student' : '/dashboard/parent';
-        router.push(dashboardPath);
-    }
-  }, [user, userProfile, loading, router]);
-
 
   const handleSignUp = async () => {
     if (!fullName.trim()) {
@@ -83,7 +67,6 @@ export default function LoginPage() {
         if (!familyCode.trim() || familyCode.length !== 6) {
           throw new Error("A valid 6-character family code is required for parent accounts.");
         }
-        // Find student by family code
         const q = query(collection(db, "users"), where("familyCode", "==", familyCode), where("role", "==", "student"));
         const querySnapshot = await getDocs(q);
         
@@ -95,14 +78,13 @@ export default function LoginPage() {
         userDocData.linkedStudent = studentDoc.id;
       }
       
-      // Save user data to Firestore
       await setDoc(doc(db, "users", user.uid), userDocData);
 
       toast({
         title: "Account Created!",
         description: "You have been successfully signed up.",
       });
-      // The useEffect will handle the redirect
+      router.push('/dashboard');
     } catch (error: any) {
         console.error("Sign up error:", error);
         let errorMessage = "An unknown error occurred during sign up.";
@@ -145,7 +127,7 @@ export default function LoginPage() {
             title: "Login Successful",
             description: "Welcome back!",
         });
-        // The useEffect will handle the redirect
+        router.push('/dashboard');
     } catch (error: any) {
         console.error("Login error:", error);
         let errorMessage = "An unknown error occurred.";
@@ -181,15 +163,6 @@ export default function LoginPage() {
       handleSignUp();
     }
   };
-  
-  if (loading || user) {
-     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-4 text-lg font-medium text-foreground">Loading...</p>
-        </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4 selection:bg-primary/20">
@@ -297,14 +270,13 @@ export default function LoginPage() {
                     <Input
                         id="familyCode"
                         type="text"
-                        placeholder="e.g. A1B2C3"
+                        placeholder="e.g. 123456"
                         value={familyCode}
                         onChange={(e) => setFamilyCode(e.target.value.toUpperCase())}
-                        required
                         maxLength={6}
                         className="text-base h-11 bg-background/70 tracking-widest"
                     />
-                     <p className="text-xs text-muted-foreground pt-1">Enter the 6-digit code provided by your child to link accounts.</p>
+                     <p className="text-xs text-muted-foreground pt-1">Optional. Enter the 6-digit code from your child to link accounts now.</p>
                 </div>
             )}
 
@@ -312,7 +284,7 @@ export default function LoginPage() {
               type="submit" 
               className={cn(
                 "w-full text-base py-3 h-12 font-semibold transition-all duration-300 ease-out transform hover:scale-105 focus:ring-4",
-                role === "student" ? "bg-primary hover:bg-primary/90 text-primary-foreground focus:ring-primary/30" : "bg-red-600 hover:bg-red-700 text-white focus:ring-red-600/30"
+                role === "student" || isLoginView ? "bg-primary hover:bg-primary/90 text-primary-foreground focus:ring-primary/30" : "bg-red-600 hover:bg-red-700 text-white focus:ring-red-600/30"
               )} 
               disabled={isLoading}
             >
