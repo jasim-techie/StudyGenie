@@ -3,7 +3,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, LogIn, BrainCircuit, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -13,9 +13,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { 
   createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  browserSessionPersistence,
-  setPersistence
+  signInWithEmailAndPassword
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -37,7 +35,6 @@ export default function AuthPage() {
     if (isLoginView) {
       // --- LOGIN LOGIC ---
       try {
-        await setPersistence(auth, browserSessionPersistence);
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Login Successful", description: "Welcome back!" });
         router.push('/dashboard');
@@ -55,7 +52,6 @@ export default function AuthPage() {
         return;
       }
       try {
-        await setPersistence(auth, browserSessionPersistence);
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
@@ -132,7 +128,7 @@ export default function AuthPage() {
             </CardContent>
             <CardFooter>
                  <Button type="submit" className={cn("w-full", !isLoginView && 'bg-red-600 hover:bg-red-700')} disabled={isLoading}>
-                    {isLoading ? <Loader2 className="animate-spin mr-2"/> : <LogIn className="mr-2 h-5 w-5" />}
+                    {isLoading ? <Loader2 className="animate-spin mr-2"/> : (isLoginView ? <LogIn className="mr-2 h-5 w-5" /> : <UserPlus className="mr-2 h-5 w-5" />)}
                     {isLoading ? (isLoginView ? "Logging in..." : "Creating Account...") : (isLoginView ? "Login" : "Create Account")}
                 </Button>
             </CardFooter>
