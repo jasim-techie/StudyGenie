@@ -6,7 +6,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { StudentProfile } from '@/lib/types';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface AuthContextType {
@@ -32,63 +32,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     let unsubscribeProfile: (() => void) | undefined;
-    let profileTimeout: NodeJS.Timeout | undefined;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
-      setLoading(false);
+      setLoading(false); // Auth check is complete
       setUser(authUser);
 
-      // Clean up previous listeners and timeouts
       if (unsubscribeProfile) unsubscribeProfile();
-      if (profileTimeout) clearTimeout(profileTimeout);
 
       if (authUser) {
-        setProfileLoading(true);
+        setProfileLoading(true); // Start loading profile
         const userDocRef = doc(db, 'students', authUser.uid);
-
-        // For new users, their profile might not exist immediately after auth creation.
-        // We give it a grace period to avoid a race condition.
-        const isNewUser = authUser.metadata.creationTime === authUser.metadata.lastSignInTime;
         
-        if (isNewUser) {
-            profileTimeout = setTimeout(() => {
-                console.error(`Timeout: Profile for new user ${authUser.uid} not found after 5s.`);
-                setProfileLoading(false); // Give up and show an error if it takes too long
-            }, 5000);
-        }
-
         unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            if (profileTimeout) clearTimeout(profileTimeout); // Profile found, cancel timeout
             setUserProfile(docSnap.data() as StudentProfile);
-            setProfileLoading(false); // We are done loading
           } else {
-             // If it's an existing user, this is an immediate error.
-             if (!isNewUser) {
-                console.warn(`Profile for existing user ${authUser.uid} not found.`);
-                setUserProfile(null);
-                setProfileLoading(false);
-             }
-             // If it IS a new user, we don't do anything here. We let the onSnapshot
-             // listener fire again when the doc is created, or let the timeout handle failure.
+             // This case is handled in the UI. It can happen briefly during signup.
+             setUserProfile(null);
           }
+          setProfileLoading(false); // Profile fetch attempt is complete
         }, (error) => {
           console.error("Error listening to student profile:", error);
-          if (profileTimeout) clearTimeout(profileTimeout);
           setUserProfile(null);
           setProfileLoading(false);
         });
       } else {
         // User is logged out
         setUserProfile(null);
-        setProfileLoading(false);
+        setProfileLoading(false); // No profile to load
       }
     });
 
     return () => {
       unsubscribeAuth();
       if (unsubscribeProfile) unsubscribeProfile();
-      if (profileTimeout) clearTimeout(profileTimeout);
     };
   }, []);
 

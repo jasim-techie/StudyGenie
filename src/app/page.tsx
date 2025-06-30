@@ -42,7 +42,7 @@ function HomePageContent() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab === 'quiz-maker' || tab === 'key-points') {
+    if (tab === 'quiz-maker' || tab === 'key-points' || tab === 'study-plan') {
       setActiveTab(tab);
     } else {
       setActiveTab('study-plan');
@@ -155,7 +155,7 @@ function HomePageContent() {
       </main>
       <footer className="py-6 text-center text-muted-foreground border-t">
         <p>&copy; {new Date().getFullYear()} StudyGenie AI. All rights reserved.</p>
-        <p className="text-xs mt-1">Powered by Ai & Next.js</p>
+        <p className="text-xs mt-1">Powered by Firebase & Next.js</p>
       </footer>
     </div>
   );
