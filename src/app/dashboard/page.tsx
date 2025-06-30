@@ -23,9 +23,9 @@ export default function DashboardRedirectPage() {
     }
 
     // If there is a user but we are still waiting for their profile from Firestore.
-    // The component will re-render once userProfile is available, triggering the effect again.
+    // This is the key state to handle. The component will re-render once userProfile is available.
     if (!userProfile) {
-      return;
+      return; // Do nothing, the page will show its loading state
     }
 
     // Once we have the user and their profile, redirect based on role.
@@ -41,6 +41,7 @@ export default function DashboardRedirectPage() {
   }, [user, userProfile, loading, router]);
 
   // This is the loading screen shown while the logic in useEffect is running.
+  // It correctly handles all intermediate states.
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />

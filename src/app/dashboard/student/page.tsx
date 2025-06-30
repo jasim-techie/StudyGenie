@@ -20,9 +20,8 @@ const quickLinks = [
   { name: "Key Point Extractor", href: "/?tab=key-points", icon: Sparkles, description: "Extract key points from answers." },
 ];
 
-
 function StudentPageContent() {
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -37,7 +36,7 @@ function StudentPageContent() {
   };
 
   // 1. Show a loader while the initial auth check is running.
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -130,7 +129,6 @@ function StudentPageContent() {
     </div>
   );
 }
-
 
 export default function StudentDashboardPage() {
     return (

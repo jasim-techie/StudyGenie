@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
-  loading: boolean; // Represents the initial auth check AND profile fetch
+  loading: boolean; // Represents ONLY the initial auth check
 }
 
 const AuthContext = createContext<AuthContextType>({ user: null, userProfile: null, loading: true });
@@ -20,7 +20,7 @@ const AuthContext = createContext<AuthContextType>({ user: null, userProfile: nu
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // This now tracks only the initial onAuthStateChanged call
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth || !db) {
@@ -36,31 +36,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         unsubscribeProfile();
       }
 
+      setUser(authUser);
+
       if (authUser) {
-        setUser(authUser);
-        // Set up a new listener for the logged-in user's profile
+        // User is logged in, listen for their profile document
         const userDocRef = doc(db, 'users', authUser.uid);
         unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
           } else {
-            // This is the case from the error report. It's a valid state (e.g., interrupted signup).
-            // We'll log a warning instead of an error.
             console.warn("User profile not found in Firestore for UID:", authUser.uid);
             setUserProfile(null);
           }
-          setLoading(false); // Stop loading once we have auth and profile status.
         }, (error) => {
           console.error("Error listening to user profile:", error);
           setUserProfile(null);
-          setLoading(false);
         });
       } else {
-        // User is logged out
-        setUser(null);
+        // User is logged out, clear profile
         setUserProfile(null);
-        setLoading(false); // Stop loading
       }
+      
+      // The initial auth check is complete, so we can stop the main loader.
+      setLoading(false);
     });
 
     // Cleanup both listeners on component unmount
@@ -70,9 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         unsubscribeProfile();
       }
     };
-    // The empty dependency array ensures this effect runs only once on mount.
   }, []);
-
 
   if (!isFirebaseConfigured) {
     return (

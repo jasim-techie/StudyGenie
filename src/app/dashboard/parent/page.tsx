@@ -5,22 +5,21 @@ import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/study-genie/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Link as LinkIcon, Users, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Link as LinkIcon, CheckCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
 
 function ParentPageContent() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   
   const [studentProfile, setStudentProfile] = useState<UserProfile | null>(null);
   const [studentLoading, setStudentLoading] = useState(true);
@@ -28,14 +27,15 @@ function ParentPageContent() {
   const [isLinking, setIsLinking] = useState(false);
   const [linkedStudentName, setLinkedStudentName] = useState<string | null>(null);
 
-  // Effect to fetch linked student's name
+  // Effect to fetch linked student's name if it exists
   useEffect(() => {
     if (userProfile && userProfile.role === 'parent' && userProfile.linkedStudent) {
       const fetchStudentName = async () => {
+        setStudentLoading(true);
         const studentDocRef = doc(db, 'users', userProfile.linkedStudent!);
-        const studentDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', userProfile.linkedStudent!)));
-        if (!studentDoc.empty) {
-            setLinkedStudentName(studentDoc.docs[0].data().name);
+        const studentDocSnap = await getDoc(studentDocRef);
+        if (studentDocSnap.exists()) {
+            setLinkedStudentName(studentDocSnap.data().name);
         }
         setStudentLoading(false);
       };
@@ -77,7 +77,7 @@ function ParentPageContent() {
   };
 
   // 1. Show a loader while the initial auth check is running.
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -172,7 +172,6 @@ function ParentPageContent() {
     </div>
   );
 }
-
 
 export default function ParentDashboardPage() {
     return (
