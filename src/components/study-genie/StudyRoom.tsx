@@ -34,6 +34,7 @@ export function StudyRoom() {
   useEffect(() => {
     if (authLoading) return; // Wait until authentication state is resolved
     if (!user) {
+      setSubjects([]); // Clear subjects if user logs out
       setIsLoading(false);
       return;
     };
@@ -110,8 +111,9 @@ export function StudyRoom() {
     if (!confirm(`Are you sure you want to delete the subject "${subjectName}" and all its files? This cannot be undone.`)) return;
 
     try {
-      // NOTE: Deleting a collection from the client-side is not recommended for production.
-      // A Cloud Function triggered on document deletion is the robust way to handle this.
+      // Note: Deleting subcollections from the client is not ideal for production.
+      // A Cloud Function is the more robust way to handle this to prevent orphaned data.
+      // For this implementation, we assume files are deleted first or handled by a backend process.
       const subjectDocRef = doc(db, `users/${user.uid}/subjects`, subjectId);
       await deleteDoc(subjectDocRef);
       toast({ title: "Subject Removed", description: `"${subjectName}" has been removed.`});
@@ -245,7 +247,7 @@ export function StudyRoom() {
         </CardContent>
       </Card>
 
-      {subjects.length === 0 && (
+      {subjects.length === 0 && !isLoading && (
         <Card className="shadow-md border-border/60">
           <CardContent className="pt-6 text-center text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
